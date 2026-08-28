@@ -1,4 +1,4 @@
-# Wattix
+# Wattix – Energie intelligent steuern
 
 Eine generische PV-Überschusssteuerung für Home Assistant. Statt fester
 Heizstufen legst du beliebige Geräte (z. B. Relais eines Shelly 4PM) direkt
