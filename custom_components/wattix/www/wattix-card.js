@@ -180,7 +180,7 @@ class WattixCard extends HTMLElement {
       on_delay_min: "5",
       off_delay_min: "5",
       hysteresis_w: "100",
-      min_runtime_hours: "",
+      min_runtime_minutes: "",
       min_runtime_deadline: "",
     };
     this._renderDevicesWithForm();
@@ -196,7 +196,7 @@ class WattixCard extends HTMLElement {
       on_delay_min: String(device.on_delay_s / 60),
       off_delay_min: String(device.off_delay_s / 60),
       hysteresis_w: String(device.hysteresis_w),
-      min_runtime_hours: device.min_runtime_s ? String(device.min_runtime_s / 3600) : "",
+      min_runtime_minutes: device.min_runtime_s ? String(device.min_runtime_s / 60) : "",
       min_runtime_deadline: device.min_runtime_deadline || "",
     };
     this._renderDevicesWithForm();
@@ -211,8 +211,8 @@ class WattixCard extends HTMLElement {
 
   _draftPayload() {
     const d = this._draft;
-    const hours = Number(d.min_runtime_hours);
-    const useMinRuntime = d.min_runtime_hours !== "" && hours > 0 && d.min_runtime_deadline;
+    const minutes = Number(d.min_runtime_minutes);
+    const useMinRuntime = d.min_runtime_minutes !== "" && minutes > 0 && d.min_runtime_deadline;
     return {
       name: d.name.trim(),
       entity_id: d.entity_id.trim(),
@@ -220,17 +220,17 @@ class WattixCard extends HTMLElement {
       hysteresis_w: d.hysteresis_w === "" ? undefined : Number(d.hysteresis_w),
       on_delay_s: Math.round(Number(d.on_delay_min) * 60),
       off_delay_s: Math.round(Number(d.off_delay_min) * 60),
-      min_runtime_s: useMinRuntime ? Math.round(hours * 3600) : 0,
+      min_runtime_s: useMinRuntime ? Math.round(minutes * 60) : 0,
       min_runtime_deadline: useMinRuntime ? d.min_runtime_deadline : "",
     };
   }
 
   _saveForm() {
     const d = this._draft;
-    const hasHours = d.min_runtime_hours !== "" && Number(d.min_runtime_hours) > 0;
+    const hasMinutes = d.min_runtime_minutes !== "" && Number(d.min_runtime_minutes) > 0;
     const hasDeadline = !!d.min_runtime_deadline;
-    if (hasHours !== hasDeadline) {
-      window.alert("Für die Mindestlaufzeit bitte sowohl Stunden als auch Uhrzeit angeben (oder beide leer lassen).");
+    if (hasMinutes !== hasDeadline) {
+      window.alert("Für die Mindestlaufzeit bitte sowohl Minuten als auch Uhrzeit angeben (oder beide leer lassen).");
       return;
     }
     const payload = this._draftPayload();
@@ -265,9 +265,16 @@ class WattixCard extends HTMLElement {
       .em-header-right { display: flex; align-items: center; gap: 10px; }
       .em-active-count { color: var(--secondary-text-color); font-size: 0.9em; }
       .em-auto-toggle { cursor: pointer; }
-      .em-surplus { display: flex; align-items: baseline; gap: 8px; margin-bottom: 16px; }
+      .em-surplus { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
       .em-surplus .value { font-size: 2em; font-weight: 600; }
       .em-surplus .label { color: var(--secondary-text-color); font-size: 0.9em; }
+      .em-legend { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 4px 10px; margin: 0 0 14px; }
+      .em-legend-item { display: flex; align-items: center; gap: 4px; font-size: 0.72em; color: var(--secondary-text-color); white-space: nowrap; }
+      .em-legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+      .em-legend-dot.on { background: var(--success-color, #43a047); }
+      .em-legend-dot.pending { background: var(--warning-color, #fb8c00); }
+      .em-legend-dot.catchup { background: var(--info-color, #3b6fd4); }
+      .em-legend-dot.disabled { background: var(--disabled-text-color, #9e9e9e); }
       .em-device { border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; background: var(--secondary-background-color, #f2f2f2); display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
       .em-device.on { background: var(--success-color, #43a047); color: white; }
       .em-device.pending { background: var(--warning-color, #fb8c00); color: white; }
@@ -325,6 +332,12 @@ class WattixCard extends HTMLElement {
       <div class="em-surplus">
         <div class="value" id="em-surplus-value">–</div>
         <div class="label">Überschuss aktuell</div>
+      </div>
+      <div class="em-legend">
+        <span class="em-legend-item"><span class="em-legend-dot on"></span>An</span>
+        <span class="em-legend-item"><span class="em-legend-dot pending"></span>Wartet</span>
+        <span class="em-legend-item"><span class="em-legend-dot catchup"></span>Pflichtlauf</span>
+        <span class="em-legend-item"><span class="em-legend-dot disabled"></span>Regelung aus</span>
       </div>
       <div id="em-devices"></div>
       <button class="em-add-btn" id="em-add-btn">+ Gerät hinzufügen</button>
@@ -485,8 +498,8 @@ class WattixCard extends HTMLElement {
         </div>
         <div class="em-form-row two">
           <div>
-            <label>Mindestlaufzeit pro Tag (h)</label>
-            <input type="number" id="em-f-min-runtime" value="${escapeHtml(d.min_runtime_hours)}" min="0" step="0.5" placeholder="leer = aus" />
+            <label>Mindestlaufzeit pro Tag (min)</label>
+            <input type="number" id="em-f-min-runtime" value="${escapeHtml(d.min_runtime_minutes)}" min="0" step="5" placeholder="leer = aus" />
           </div>
           <div>
             <label>… bis Uhrzeit</label>
@@ -506,7 +519,7 @@ class WattixCard extends HTMLElement {
     wrap.querySelector("#em-f-on-delay").addEventListener("input", (e) => (this._draft.on_delay_min = e.target.value));
     wrap.querySelector("#em-f-off-delay").addEventListener("input", (e) => (this._draft.off_delay_min = e.target.value));
     wrap.querySelector("#em-f-hysteresis").addEventListener("input", (e) => (this._draft.hysteresis_w = e.target.value));
-    wrap.querySelector("#em-f-min-runtime").addEventListener("input", (e) => (this._draft.min_runtime_hours = e.target.value));
+    wrap.querySelector("#em-f-min-runtime").addEventListener("input", (e) => (this._draft.min_runtime_minutes = e.target.value));
     wrap.querySelector("#em-f-min-runtime-deadline").addEventListener("input", (e) => (this._draft.min_runtime_deadline = e.target.value));
     wrap.querySelector("#em-f-save").addEventListener("click", () => this._saveForm());
     wrap.querySelector("#em-f-cancel").addEventListener("click", () => this._cancelForm());
