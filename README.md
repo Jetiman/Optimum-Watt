@@ -36,6 +36,10 @@ Nach der Einrichtung hinterlegst du nur einen Sensor, der die aktuelle
 Alle Änderungen (Gerät hinzufügen/bearbeiten/löschen/verschieben) wirken
 sofort – kein Neustart, kein YAML.
 
+Die Integration bringt ihr Marken-Icon selbst mit (`custom_components/wattix/brand/`)
+und wird ab Home Assistant 2026.3.0 automatisch mit eigenem Icon statt eines
+Platzhalters angezeigt – ganz ohne separate Einreichung.
+
 ## Installation über HACS
 
 1. HACS → Integrationen → Menü (⋮) → *Benutzerdefinierte Repositories*.
