@@ -50,12 +50,20 @@ Im Config-Flow wählst du nur:
    Einspeisung als negativen Wert an, aktiviere „Sensor zeigt Einspeisung
    als negativen Wert an".
 
-Das war's – Geräte fügst du danach im Dashboard hinzu.
+Das war's – Geräte fügst du danach im Interface hinzu.
+
+## Sidebar-Button
+
+Nach der Einrichtung erscheint automatisch ein **„Wattix"-Eintrag in der
+linken Seitenleiste** (Icon ⚡) – ein Klick öffnet das Interface direkt,
+ganzflächig, ohne dass du dafür ein eigenes Dashboard anlegen musst.
 
 ## Dashboard-Karte
 
-Die Integration liefert eine eigene Lovelace-Karte mit, die automatisch als
-Frontend-Ressource registriert wird. Füge sie zu einem Dashboard hinzu:
+Wer die Geräteliste zusätzlich in ein bestehendes Dashboard einbetten
+möchte: Die Integration liefert dafür auch eine eigene Lovelace-Karte mit,
+die automatisch als Frontend-Ressource registriert wird. Füge sie zu einem
+Dashboard hinzu:
 
 ```yaml
 type: custom:wattix-card

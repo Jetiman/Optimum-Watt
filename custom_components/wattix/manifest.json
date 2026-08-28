@@ -3,7 +3,7 @@
   "name": "Wattix",
   "codeowners": ["@jetiman"],
   "config_flow": true,
-  "dependencies": ["http", "frontend", "websocket_api"],
+  "dependencies": ["http", "frontend", "websocket_api", "panel_custom"],
   "documentation": "https://github.com/jetiman/wattix",
   "integration_type": "hub",
   "iot_class": "local_polling",

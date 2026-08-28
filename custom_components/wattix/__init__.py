@@ -7,6 +7,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.components.frontend import add_extra_js_url
 from homeassistant.components.http import StaticPathConfig
+from homeassistant.components.panel_custom import async_register_panel
 
 from .const import DOMAIN, PLATFORMS
 from .coordinator import WattixCoordinator
@@ -15,6 +16,7 @@ from .ws_api import async_register_websocket_commands
 
 CARD_URL_BASE = f"/{DOMAIN}_files"
 CARD_FILENAME = "wattix-card.js"
+PANEL_URL_PATH = "wattix"
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
@@ -44,7 +46,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def _async_register_frontend(hass: HomeAssistant) -> None:
-    """Serve the custom Lovelace card and register it once for all entries."""
+    """Serve the custom Lovelace card and sidebar panel, once for all entries."""
     if hass.data[DOMAIN].get("_frontend_registered"):
         return
 
@@ -53,6 +55,18 @@ async def _async_register_frontend(hass: HomeAssistant) -> None:
         [StaticPathConfig(f"{CARD_URL_BASE}/{CARD_FILENAME}", str(www_dir / CARD_FILENAME), False)]
     )
     add_extra_js_url(hass, f"{CARD_URL_BASE}/{CARD_FILENAME}")
+
+    await async_register_panel(
+        hass,
+        frontend_url_path=PANEL_URL_PATH,
+        webcomponent_name="wattix-panel",
+        sidebar_title="Wattix",
+        sidebar_icon="mdi:flash",
+        module_url=f"{CARD_URL_BASE}/{CARD_FILENAME}",
+        embed_iframe=False,
+        require_admin=False,
+    )
+
     hass.data[DOMAIN]["_frontend_registered"] = True
 
 

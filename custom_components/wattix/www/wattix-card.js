@@ -468,3 +468,38 @@ window.customCards.push({
   name: "Wattix",
   description: "PV-Überschuss-Kaskadensteuerung: Geräte anlegen, priorisieren und live steuern.",
 });
+
+/**
+ * Full-page wrapper around wattix-card, used as the sidebar panel so the
+ * interface is reachable with a single click without building a dashboard.
+ */
+class WattixPanel extends HTMLElement {
+  set hass(hass) {
+    this._hass = hass;
+    if (!this._card) {
+      this.style.display = "block";
+      this.style.minHeight = "100vh";
+      this.style.boxSizing = "border-box";
+      this.style.padding = "16px";
+      this.style.background = "var(--primary-background-color)";
+
+      const wrap = document.createElement("div");
+      wrap.style.maxWidth = "680px";
+      wrap.style.margin = "0 auto";
+
+      this._card = document.createElement("wattix-card");
+      this._card.setConfig({});
+      wrap.appendChild(this._card);
+      this.appendChild(wrap);
+    }
+    this._card.hass = hass;
+  }
+
+  set panel(panel) {}
+
+  set narrow(narrow) {}
+
+  set route(route) {}
+}
+
+customElements.define("wattix-panel", WattixPanel);
