@@ -581,9 +581,13 @@ class WattixPanel extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     if (!this._card) {
+      // Fill exactly the area Home Assistant already allocates for the panel
+      // (viewport minus its own toolbar) and scroll internally - a 100vh
+      // host pushes that toolbar (and its sidebar-toggle button) off-screen.
       this.style.display = "block";
-      this.style.minHeight = "100vh";
+      this.style.height = "100%";
       this.style.boxSizing = "border-box";
+      this.style.overflow = "auto";
       this.style.padding = "16px";
       this.style.background = "var(--primary-background-color)";
 
