@@ -1,0 +1,14 @@
+{
+  "domain": "einspeise_manager",
+  "name": "Einspeise-Manager",
+  "codeowners": ["@jetiman"],
+  "config_flow": true,
+  "dependencies": ["http", "frontend"],
+  "documentation": "https://github.com/jetiman/einspeise-manager",
+  "integration_type": "hub",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/jetiman/einspeise-manager/issues",
+  "requirements": [],
+  "min_ha_version": "2024.8.0",
+  "version": "0.1.0"
+}
