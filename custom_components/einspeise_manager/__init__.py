@@ -10,9 +10,19 @@ from homeassistant.components.http import StaticPathConfig
 
 from .const import DOMAIN, PLATFORMS
 from .coordinator import EinspeiseManagerCoordinator
+from .services import async_register_services
+from .ws_api import async_register_websocket_commands
 
 CARD_URL_BASE = f"/{DOMAIN}_files"
 CARD_FILENAME = "einspeise-manager-card.js"
+
+
+async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+    """Register the websocket API and services once, independent of any entry."""
+    hass.data.setdefault(DOMAIN, {})
+    async_register_websocket_commands(hass)
+    await async_register_services(hass)
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -57,3 +67,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         coordinator: EinspeiseManagerCoordinator = hass.data[DOMAIN].pop(entry.entry_id)
         coordinator.async_unload()
     return unload_ok
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Delete the persisted device list along with the config entry."""
+    await EinspeiseManagerCoordinator.async_remove_storage(hass, entry.entry_id)

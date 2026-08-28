@@ -1,4 +1,9 @@
-"""Status sensors for Einspeise-Manager."""
+"""Aggregate status sensors for Einspeise-Manager.
+
+Per-device state is not exposed as individual entities — it lives in the
+coordinator and is served to the dashboard card via the websocket API.
+These two sensors give a stable, dashboard/automation-friendly summary.
+"""
 from __future__ import annotations
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
@@ -8,27 +13,15 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
-from .coordinator import EinspeiseManagerCoordinator, Stage
+from .coordinator import EinspeiseManagerCoordinator
 from .entity import EinspeiseManagerEntity
-
-STATUS_LABELS = {
-    "manual_on": "Manuell an",
-    "manual_off": "Manuell aus",
-    "auto_on": "An (Automatik)",
-    "auto_off": "Aus (Automatik)",
-}
 
 
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
     coordinator: EinspeiseManagerCoordinator = hass.data[DOMAIN][entry.entry_id]
-    entities: list[SensorEntity] = [
-        SurplusSensor(coordinator),
-        ActiveStageCountSensor(coordinator),
-    ]
-    entities.extend(StageStatusSensor(coordinator, stage) for stage in coordinator.stages)
-    async_add_entities(entities)
+    async_add_entities([SurplusSensor(coordinator), ActiveDeviceCountSensor(coordinator)])
 
 
 class SurplusSensor(EinspeiseManagerEntity, SensorEntity):
@@ -49,51 +42,21 @@ class SurplusSensor(EinspeiseManagerEntity, SensorEntity):
         return self.coordinator.current_power_w
 
 
-class ActiveStageCountSensor(EinspeiseManagerEntity, SensorEntity):
-    """How many heater stages are currently switched on."""
+class ActiveDeviceCountSensor(EinspeiseManagerEntity, SensorEntity):
+    """How many devices are currently switched on."""
 
-    _attr_name = "Aktive Stufen"
+    _attr_name = "Aktive Geräte"
     _attr_icon = "mdi:counter"
     _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(self, coordinator: EinspeiseManagerCoordinator) -> None:
         super().__init__(coordinator)
-        self._attr_unique_id = f"{coordinator.entry.entry_id}_active_stages"
+        self._attr_unique_id = f"{coordinator.entry.entry_id}_active_devices"
 
     @property
     def native_value(self) -> int:
-        return self.coordinator.active_stage_count
+        return self.coordinator.active_device_count
 
     @property
     def extra_state_attributes(self) -> dict:
-        return {"stufen_gesamt": len(self.coordinator.stages)}
-
-
-class StageStatusSensor(EinspeiseManagerEntity, SensorEntity):
-    """Human-readable state of a single heater stage."""
-
-    _attr_icon = "mdi:radiator"
-
-    def __init__(self, coordinator: EinspeiseManagerCoordinator, stage: Stage) -> None:
-        super().__init__(coordinator)
-        self._stage = stage
-        self._attr_name = f"{stage.name} Status"
-        self._attr_unique_id = f"{coordinator.entry.entry_id}_stage_{stage.index}_status"
-
-    @property
-    def native_value(self) -> str:
-        return STATUS_LABELS[self._stage.status_text()]
-
-    @property
-    def extra_state_attributes(self) -> dict:
-        return {
-            "entity_id": self._stage.entity_id,
-            "leistung_w": self._stage.rated_power_w,
-            "einschaltschwelle_w": self._stage.on_threshold_w,
-            "ausschaltschwelle_w": self._stage.off_threshold_w,
-            "aktiv": self._stage.active,
-            "modus": self._stage.mode,
-            "verbleibende_sekunden": self.coordinator.stage_seconds_remaining(
-                self._stage
-            ),
-        }
+        return {"geraete_gesamt": len(self.coordinator.devices)}

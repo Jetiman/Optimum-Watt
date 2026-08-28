@@ -1,30 +1,38 @@
 # Einspeise-Manager
 
-Eine kaskadierende Überschusssteuerung für Home Assistant, für den eigenen
-Warmwasserspeicher mit mehreren Heizstäben, z. B. gesteuert über einen
-**Shelly 4PM**.
+Eine generische PV-Überschusssteuerung für Home Assistant. Statt fester
+Heizstufen legst du beliebige Geräte (z. B. Relais eines Shelly 4PM) direkt
+im mitgelieferten Dashboard-Interface an, priorisierst sie per Reihenfolge
+und stellst Leistungsbedarf sowie Ein-/Ausschaltverzögerung pro Gerät ein.
 
 ## Wie es funktioniert
 
-Du hinterlegst einen Sensor, der die aktuelle **Netz-Einspeiseleistung**
-liefert, sowie 1–6 Heizstufen (Schalter-Entitäten, z. B. die vier Relais
-deines Shelly 4PM). Die Integration beobachtet die Einspeisung fortlaufend:
+Nach der Einrichtung hinterlegst du nur einen Sensor, der die aktuelle
+**Netz-Einspeiseleistung** liefert. Alles Weitere passiert im Interface
+(einer eigenen Dashboard-Karte):
 
-- Wird für **X Minuten** (Standard: 5) durchgehend mindestens die
-  eingestellte Schwelle (Standard: 1000 W) eingespeist, schaltet **Stufe 1**
-  ein.
-- Bleibt die Einspeisung weiterhin hoch genug (abzüglich der bereits
-  zugeschalteten Heizstäbe), schaltet nach den gleichen Regeln **Stufe 2**,
-  danach **Stufe 3** usw. zu.
-- Sinkt die Einspeisung für X Minuten unter die Schwelle (mit Hysterese, um
-  Flattern zu vermeiden), wird die **zuletzt zugeschaltete** Stufe zuerst
-  wieder abgeschaltet (LIFO – wie ein Wasserstand, der auf- und abfüllt).
-- Jede Stufe lässt sich jederzeit manuell auf **An** oder **Aus** erzwingen,
-  unabhängig von der Automatik.
+- Du legst ein **Gerät** an: Name, zu schaltende `switch`-Entität und
+  **Leistungsbedarf in Watt** – dieser Wert ist zugleich die
+  Einschaltschwelle.
+- Beispiel: Gerät B braucht 200 W, Gerät A braucht 500 W. Sobald über
+  200 W eingespeist werden, schaltet B ein. Bleibt der Überschuss weiter
+  hoch genug (Gerät B zieht die 200 W ja bereits ab), schaltet danach A
+  ein, sobald zusätzlich 500 W Überschuss anstehen.
+- **Priorität** ergibt sich aus der Reihenfolge der Geräteliste (per
+  Pfeiltasten verschiebbar): Das oberste Gerät schaltet zuerst ein und
+  zuletzt wieder ab (LIFO – wie ein Wasserstand, der auf- und abfüllt).
+- Pro Gerät stellst du ein, **wie lange** der Überschuss anstehen muss,
+  bevor zugeschaltet wird (Einschaltverzögerung), und wie lange er
+  **weg** sein muss, bevor wieder abgeschaltet wird (Ausschaltverzögerung)
+  – Standard jeweils 5 Minuten.
+- Eine Hysterese (Standard 100 W, unter „Erweitert") verhindert, dass ein
+  Gerät bei schwankendem Überschuss knapp an der Schwelle flattert.
+- Jedes Gerät lässt sich jederzeit manuell auf **An** oder **Aus**
+  erzwingen, unabhängig von der Automatik. Ein globaler Automatik-Schalter
+  schaltet die gesamte Kaskade ein/aus.
 
-Alle Schwellenwerte, die Ein-/Ausschaltverzögerung und die Hysterese sind
-live über Zahlenfelder im Dashboard einstellbar – kein Neustart, keine
-YAML-Bearbeitung nötig.
+Alle Änderungen (Gerät hinzufügen/bearbeiten/löschen/verschieben) wirken
+sofort – kein Neustart, kein YAML.
 
 ## Installation über HACS
 
@@ -35,73 +43,79 @@ YAML-Bearbeitung nötig.
 
 ## Einrichtung
 
-Im Config-Flow wählst du:
+Im Config-Flow wählst du nur:
 
 1. **Sensor Einspeiseleistung** – ein `sensor`-Entity mit der aktuellen
    Netzleistung in Watt (positiv = Einspeisung). Zeigt dein Sensor
-   Einspeisung als negativen Wert an, aktiviere die Option „Sensor zeigt
-   Einspeisung als negativen Wert an".
-2. **Anzahl Heizstufen** (Standard 3).
-3. Für jede Stufe: Name, zu schaltende `switch`-Entität (z. B.
-   `switch.shelly4pm_relais_1` deines Shelly 4PM) und Nennleistung in Watt.
+   Einspeisung als negativen Wert an, aktiviere „Sensor zeigt Einspeisung
+   als negativen Wert an".
 
-Die Konfiguration kann später jederzeit über *Konfigurieren* am Integrationseintrag
-angepasst werden.
+Das war's – Geräte fügst du danach im Dashboard hinzu.
+
+## Dashboard-Karte
+
+Die Integration liefert eine eigene Lovelace-Karte mit, die automatisch als
+Frontend-Ressource registriert wird. Füge sie zu einem Dashboard hinzu:
+
+```yaml
+type: custom:einspeise-manager-card
+```
+
+Mehr braucht es nicht – die Karte findet deine Einspeise-Manager-Instanz
+automatisch. Optional lässt sich ein Titel setzen oder (bei mehreren
+Instanzen) die passende explizit auswählen:
+
+```yaml
+type: custom:einspeise-manager-card
+title: PV-Überschuss
+entry_id: 01H...   # zu finden in der URL unter Einstellungen → Geräte & Dienste → Einspeise-Manager
+```
+
+Die Karte zeigt:
+
+- den aktuellen Überschuss und einen Automatik-Umschalter,
+- eine Geräteliste mit Status, Restzeit bis zur nächsten Schaltung,
+  Auf/Ab-Pfeilen zum Priorisieren, Auto/An/Aus-Buttons, sowie
+  Bearbeiten- und Löschen-Aktionen,
+- einen „+ Gerät hinzufügen"-Button mit Formular (Name, Schalter,
+  Leistungsbedarf, Verzögerungen, erweitert: Hysterese).
 
 ## Erzeugte Entitäten
 
-Pro Instanz wird ein Gerät „Einspeise-Manager" mit folgenden Entitäten angelegt:
+Pro Instanz wird ein Gerät „Einspeise-Manager" mit zwei zusätzlichen
+Entitäten für Dashboards/Automatisierungen angelegt:
 
 | Entität | Domain | Beschreibung |
 |---|---|---|
 | Automatik | `switch` | Schaltet die gesamte Kaskadensteuerung ein/aus |
 | Überschuss | `sensor` | Aktuelle Einspeiseleistung (normalisiert, W) |
-| Aktive Stufen | `sensor` | Anzahl aktuell eingeschalteter Heizstufen |
-| Heizung *n* Status | `sensor` | Text-Status + Attribute (aktiv, verbleibende Sekunden, Schwellen …) |
-| Heizung *n* Modus | `select` | `auto` / `on` / `off` – erzwingt Ein/Aus oder gibt Automatik frei |
-| Heizung *n* Einschaltschwelle | `number` | Einspeiseleistung (W), ab der diese Stufe zuschaltet |
-| Hysterese | `number` | Abstand zwischen Ein- und Ausschaltschwelle (W) |
-| Einschaltverzögerung | `number` | Minuten, die der Überschuss anstehen muss (Standard 5) |
-| Ausschaltverzögerung | `number` | Minuten, die der Unterschuss anstehen muss (Standard 5) |
+| Aktive Geräte | `sensor` | Anzahl aktuell eingeschalteter Geräte |
 
-## Dashboard-Karte
+Die einzelnen Geräte selbst (Name, Priorität, Status, Schwellen) sind
+bewusst **keine** eigenen HA-Entitäten, sondern eine dynamische Liste, die
+über die Karte bzw. die WebSocket-API/Services verwaltet wird – so lassen
+sich Geräte live hinzufügen, ohne dass die Integration neu geladen werden
+muss.
 
-Die Integration liefert eine eigene Lovelace-Karte mit, die automatisch als
-Frontend-Ressource registriert wird (kein manuelles Hinzufügen nötig).
-Beispiel-Konfiguration im Dashboard (YAML-Modus einer Karte):
+## Automatisierung / Services
 
-```yaml
-type: custom:einspeise-manager-card
-title: Warmwasser Einspeise-Manager
-surplus_entity: sensor.einspeise_manager_ueberschuss
-auto_entity: switch.einspeise_manager_automatik
-stages:
-  - name: Heizung 1
-    status_entity: sensor.einspeise_manager_heizung_1_status
-    mode_entity: select.einspeise_manager_heizung_1_modus
-    threshold_entity: number.einspeise_manager_heizung_1_einschaltschwelle
-  - name: Heizung 2
-    status_entity: sensor.einspeise_manager_heizung_2_status
-    mode_entity: select.einspeise_manager_heizung_2_modus
-    threshold_entity: number.einspeise_manager_heizung_2_einschaltschwelle
-  - name: Heizung 3
-    status_entity: sensor.einspeise_manager_heizung_3_status
-    mode_entity: select.einspeise_manager_heizung_3_modus
-    threshold_entity: number.einspeise_manager_heizung_3_einschaltschwelle
-```
+Für Skripte und Automatisierungen stehen folgende Services bereit
+(Parameter siehe Dienste-Übersicht in Home Assistant):
 
-Die tatsächlichen Entity-IDs hängen vom Titel deiner Integrationsinstanz ab –
-im UI unter *Einstellungen → Geräte & Dienste → Einspeise-Manager* nachsehen.
+- `einspeise_manager.add_device`
+- `einspeise_manager.remove_device`
+- `einspeise_manager.set_device_mode` (`auto` / `on` / `off`)
+- `einspeise_manager.set_auto_mode`
 
-Die Karte zeigt den aktuellen Überschuss, einen Automatik-Umschalter sowie je
-eine Kachel pro Heizstufe mit Status, Restzeit bis zur nächsten Schaltung,
-Auto/An/Aus-Buttons und einem Eingabefeld für die Einschaltschwelle.
+Die Geräte-ID (`device_id`) eines Geräts findest du in der Karte oder per
+Entwicklerwerkzeuge → WebSocket-Befehl `einspeise_manager/list_devices`
+(mit der `entry_id` der jeweiligen Instanz).
 
 ## Beispiel: Shelly 4PM
 
 Ein Shelly 4PM stellt vier Relais als eigene `switch`-Entitäten bereit
-(`switch.<gerät>_kanal_1` … `_4`). Drei davon können direkt als Stufe 1–3 in
-den Config-Flow eingetragen werden; der vierte Kanal bleibt frei für andere
-Zwecke. Die vom Shelly gemessene Gesamtleistung eignet sich – falls kein
-separater Netzzähler vorhanden ist – ebenfalls als „Sensor Einspeiseleistung",
-sofern er die Netzeinspeisung (nicht nur den Heizstab-Verbrauch) abbildet.
+(`switch.<gerät>_kanal_1` … `_4`). Jedes davon kann als eigenes Gerät im
+Interface angelegt werden. Die vom Shelly gemessene Gesamtleistung eignet
+sich – falls kein separater Netzzähler vorhanden ist – ebenfalls als
+„Sensor Einspeiseleistung", sofern er die Netzeinspeisung (nicht nur den
+Verbrauch der geschalteten Geräte) abbildet.

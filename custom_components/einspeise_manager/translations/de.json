@@ -3,26 +3,10 @@
     "step": {
       "user": {
         "title": "Einspeise-Manager einrichten",
-        "description": "Wähle den Sensor, der die aktuelle Netz-Einspeiseleistung liefert (z. B. dein Shelly 4PM oder Zähler), und wie viele Heizstufen kaskadiert zugeschaltet werden sollen.",
+        "description": "Wähle den Sensor, der die aktuelle Netz-Einspeiseleistung liefert (z. B. von einem Shelly, einer Zähler-Integration o. Ä.). Geräte werden anschließend über die Dashboard-Karte angelegt und priorisiert.",
         "data": {
           "grid_power_entity": "Sensor Einspeiseleistung",
-          "invert": "Sensor zeigt Einspeisung als negativen Wert an",
-          "stage_count": "Anzahl Heizstufen"
-        }
-      },
-      "stages": {
-        "title": "Heizstufen konfigurieren",
-        "description": "Lege für jede Stufe den zu schaltenden Ausgang (z. B. Shelly-4PM-Relais) und die Nennleistung fest. Stufe 1 wird zuerst zu-, zuletzt abgeschaltet.",
-        "data": {
-          "stage_0_name": "Name Stufe 1",
-          "stage_0_entity": "Schalter Stufe 1",
-          "stage_0_power": "Leistung Stufe 1 (W)",
-          "stage_1_name": "Name Stufe 2",
-          "stage_1_entity": "Schalter Stufe 2",
-          "stage_1_power": "Leistung Stufe 2 (W)",
-          "stage_2_name": "Name Stufe 3",
-          "stage_2_entity": "Schalter Stufe 3",
-          "stage_2_power": "Leistung Stufe 3 (W)"
+          "invert": "Sensor zeigt Einspeisung als negativen Wert an"
         }
       }
     }
@@ -33,22 +17,7 @@
         "title": "Einspeise-Manager bearbeiten",
         "data": {
           "grid_power_entity": "Sensor Einspeiseleistung",
-          "invert": "Sensor zeigt Einspeisung als negativen Wert an",
-          "stage_count": "Anzahl Heizstufen"
-        }
-      },
-      "stages": {
-        "title": "Heizstufen konfigurieren",
-        "data": {
-          "stage_0_name": "Name Stufe 1",
-          "stage_0_entity": "Schalter Stufe 1",
-          "stage_0_power": "Leistung Stufe 1 (W)",
-          "stage_1_name": "Name Stufe 2",
-          "stage_1_entity": "Schalter Stufe 2",
-          "stage_1_power": "Leistung Stufe 2 (W)",
-          "stage_2_name": "Name Stufe 3",
-          "stage_2_entity": "Schalter Stufe 3",
-          "stage_2_power": "Leistung Stufe 3 (W)"
+          "invert": "Sensor zeigt Einspeisung als negativen Wert an"
         }
       }
     }

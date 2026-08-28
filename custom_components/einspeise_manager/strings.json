@@ -3,26 +3,10 @@
     "step": {
       "user": {
         "title": "Set up Einspeise-Manager",
-        "description": "Choose the sensor that reports current grid feed-in power (e.g. your Shelly 4PM or meter), and how many heater stages should be cascaded.",
+        "description": "Choose the sensor that reports current grid feed-in power (e.g. from a Shelly, an energy meter integration, or similar). Devices are added and prioritized afterwards in the dashboard card.",
         "data": {
           "grid_power_entity": "Grid feed-in power sensor",
-          "invert": "Sensor reports feed-in as a negative value",
-          "stage_count": "Number of heater stages"
-        }
-      },
-      "stages": {
-        "title": "Configure heater stages",
-        "description": "For each stage, pick the switch to control (e.g. a Shelly 4PM relay) and its rated power. Stage 1 turns on first and off last.",
-        "data": {
-          "stage_0_name": "Stage 1 name",
-          "stage_0_entity": "Stage 1 switch",
-          "stage_0_power": "Stage 1 power (W)",
-          "stage_1_name": "Stage 2 name",
-          "stage_1_entity": "Stage 2 switch",
-          "stage_1_power": "Stage 2 power (W)",
-          "stage_2_name": "Stage 3 name",
-          "stage_2_entity": "Stage 3 switch",
-          "stage_2_power": "Stage 3 power (W)"
+          "invert": "Sensor reports feed-in as a negative value"
         }
       }
     }
@@ -33,22 +17,7 @@
         "title": "Edit Einspeise-Manager",
         "data": {
           "grid_power_entity": "Grid feed-in power sensor",
-          "invert": "Sensor reports feed-in as a negative value",
-          "stage_count": "Number of heater stages"
-        }
-      },
-      "stages": {
-        "title": "Configure heater stages",
-        "data": {
-          "stage_0_name": "Stage 1 name",
-          "stage_0_entity": "Stage 1 switch",
-          "stage_0_power": "Stage 1 power (W)",
-          "stage_1_name": "Stage 2 name",
-          "stage_1_entity": "Stage 2 switch",
-          "stage_1_power": "Stage 2 power (W)",
-          "stage_2_name": "Stage 3 name",
-          "stage_2_entity": "Stage 3 switch",
-          "stage_2_power": "Stage 3 power (W)"
+          "invert": "Sensor reports feed-in as a negative value"
         }
       }
     }

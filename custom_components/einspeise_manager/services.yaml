@@ -1,0 +1,134 @@
+add_device:
+  name: Gerät hinzufügen
+  description: Fügt ein neues, per PV-Überschuss gesteuertes Gerät hinzu (wird ans Ende der Prioritätsliste angehängt).
+  fields:
+    entry_id:
+      name: Einspeise-Manager
+      description: Die Instanz, zu der das Gerät hinzugefügt werden soll.
+      required: true
+      selector:
+        config_entry:
+          integration: einspeise_manager
+    name:
+      name: Name
+      description: Anzeigename des Geräts.
+      required: true
+      example: Boiler Stufe 1
+      selector:
+        text:
+    entity_id:
+      name: Schalter
+      description: Die switch-Entität, die geschaltet werden soll.
+      required: true
+      selector:
+        entity:
+          domain: switch
+    power_w:
+      name: Leistungsbedarf
+      description: Leistung in Watt, die dieses Gerät benötigt bzw. als Einschaltschwelle gilt.
+      required: true
+      example: 500
+      selector:
+        number:
+          min: 0
+          max: 20000
+          step: 10
+          unit_of_measurement: W
+          mode: box
+    hysteresis_w:
+      name: Hysterese
+      description: Abstand zwischen Ein- und Ausschaltschwelle (Standard 100 W).
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 5000
+          step: 10
+          unit_of_measurement: W
+          mode: box
+    on_delay_s:
+      name: Einschaltverzögerung
+      description: Sekunden, die der Überschuss anstehen muss (Standard 300).
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 3600
+          step: 10
+          unit_of_measurement: s
+          mode: box
+    off_delay_s:
+      name: Ausschaltverzögerung
+      description: Sekunden, die der Unterschuss anstehen muss (Standard 300).
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 3600
+          step: 10
+          unit_of_measurement: s
+          mode: box
+
+remove_device:
+  name: Gerät entfernen
+  description: Entfernt ein Gerät aus der Kaskadensteuerung.
+  fields:
+    entry_id:
+      name: Einspeise-Manager
+      description: Die betroffene Instanz.
+      required: true
+      selector:
+        config_entry:
+          integration: einspeise_manager
+    device_id:
+      name: Geräte-ID
+      description: Die ID des zu entfernenden Geräts (siehe Karte oder list_devices).
+      required: true
+      selector:
+        text:
+
+set_device_mode:
+  name: Gerätemodus setzen
+  description: Erzwingt Automatik, An oder Aus für ein einzelnes Gerät.
+  fields:
+    entry_id:
+      name: Einspeise-Manager
+      description: Die betroffene Instanz.
+      required: true
+      selector:
+        config_entry:
+          integration: einspeise_manager
+    device_id:
+      name: Geräte-ID
+      description: Die ID des betroffenen Geräts.
+      required: true
+      selector:
+        text:
+    mode:
+      name: Modus
+      description: auto = Kaskadensteuerung, on = dauerhaft an, off = dauerhaft aus.
+      required: true
+      selector:
+        select:
+          options:
+            - "auto"
+            - "on"
+            - "off"
+
+set_auto_mode:
+  name: Automatik umschalten
+  description: Schaltet die gesamte Kaskadensteuerung einer Instanz ein oder aus.
+  fields:
+    entry_id:
+      name: Einspeise-Manager
+      description: Die betroffene Instanz.
+      required: true
+      selector:
+        config_entry:
+          integration: einspeise_manager
+    enabled:
+      name: Aktiv
+      description: true = Automatik an, false = Automatik aus.
+      required: true
+      selector:
+        boolean:
