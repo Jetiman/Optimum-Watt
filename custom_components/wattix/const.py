@@ -20,7 +20,8 @@ UPDATE_INTERVAL = timedelta(seconds=10)
 MODE_AUTO = "auto"
 MODE_ON = "on"
 MODE_OFF = "off"
-DEVICE_MODES = [MODE_AUTO, MODE_ON, MODE_OFF]
+MODE_DISABLED = "disabled"  # "Regelung aus": Wattix does not touch this device at all
+DEVICE_MODES = [MODE_AUTO, MODE_ON, MODE_OFF, MODE_DISABLED]
 
 PLATFORMS = ["sensor", "switch"]
 

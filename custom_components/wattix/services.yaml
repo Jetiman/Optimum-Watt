@@ -106,7 +106,7 @@ set_device_mode:
         text:
     mode:
       name: Modus
-      description: auto = Kaskadensteuerung, on = dauerhaft an, off = dauerhaft aus.
+      description: auto = Kaskadensteuerung, on = dauerhaft an, off = dauerhaft aus, disabled = Regelung aus (Wattix fasst den Schalter nicht an).
       required: true
       selector:
         select:
@@ -114,6 +114,7 @@ set_device_mode:
             - "auto"
             - "on"
             - "off"
+            - "disabled"
 
 set_auto_mode:
   name: Automatik umschalten

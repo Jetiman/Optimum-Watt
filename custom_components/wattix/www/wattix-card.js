@@ -12,6 +12,7 @@ const STATUS_LABELS = {
   manual_off: "Manuell aus",
   auto_on: "An (Automatik)",
   auto_off: "Aus (Automatik)",
+  disabled: "Regelung aus",
 };
 
 function fmtPower(watts) {
@@ -124,10 +125,27 @@ class WattixCard extends HTMLElement {
 
   _toggleAuto() {
     if (!this._latestState) return;
-    this._callWS({ type: "wattix/set_auto_mode", enabled: !this._latestState.auto_mode });
+    const enabled = !this._latestState.auto_mode;
+    // Optimistic: reflect the click instantly, the next push confirms it.
+    this._latestState.auto_mode = enabled;
+    this._render();
+    this._callWS({ type: "wattix/set_auto_mode", enabled });
   }
 
   _setMode(deviceId, mode) {
+    const device = this._latestState?.devices.find((d) => d.id === deviceId);
+    if (device) {
+      // Optimistic: flip the button state instantly instead of waiting for
+      // the round trip (which may include an actual switch call to real
+      // hardware and would otherwise make the button feel unresponsive).
+      device.mode = mode;
+      device.remaining_seconds = null;
+      if (mode === "disabled") device.status = "disabled";
+      else if (mode === "on") device.status = "manual_on";
+      else if (mode === "off") device.status = "manual_off";
+      else device.status = device.active ? "auto_on" : "auto_off";
+      this._render();
+    }
     this._callWS({ type: "wattix/update_device", device_id: deviceId, mode });
   }
 
@@ -213,16 +231,17 @@ class WattixCard extends HTMLElement {
       .em-surplus { display: flex; align-items: baseline; gap: 8px; margin-bottom: 16px; }
       .em-surplus .value { font-size: 2em; font-weight: 600; }
       .em-surplus .label { color: var(--secondary-text-color); font-size: 0.9em; }
-      .em-device { border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; background: var(--secondary-background-color, #f2f2f2); display: flex; align-items: center; gap: 8px; }
+      .em-device { border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; background: var(--secondary-background-color, #f2f2f2); display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
       .em-device.on { background: var(--success-color, #43a047); color: white; }
       .em-device.pending { background: var(--warning-color, #fb8c00); color: white; }
+      .em-device.disabled { opacity: 0.55; }
       .em-device ha-icon { --mdc-icon-size: 24px; flex-shrink: 0; }
       .em-device-order { display: flex; flex-direction: column; gap: 2px; }
-      .em-device-main { flex: 1; min-width: 0; }
+      .em-device-main { flex: 1 1 140px; min-width: 140px; }
       .em-device-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .em-device-sub { font-size: 0.82em; opacity: 0.85; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .em-modes { display: flex; gap: 4px; flex-shrink: 0; }
-      .em-modes button { border: none; border-radius: 6px; padding: 4px 7px; font-size: 0.75em; cursor: pointer; background: rgba(0,0,0,0.12); color: inherit; }
+      .em-modes { display: flex; flex-wrap: wrap; gap: 4px; flex-shrink: 0; margin-left: auto; }
+      .em-modes button { border: none; border-radius: 6px; padding: 4px 7px; font-size: 0.72em; cursor: pointer; background: rgba(0,0,0,0.12); color: inherit; white-space: nowrap; }
       .em-modes button.active { background: rgba(255,255,255,0.9); color: #222; font-weight: 600; }
       .em-icon-btn { border: none; background: rgba(0,0,0,0.1); color: inherit; border-radius: 6px; width: 28px; height: 28px; font-size: 0.85em; cursor: pointer; flex-shrink: 0; }
       .em-icon-btn:disabled { opacity: 0.3; cursor: default; }
@@ -332,7 +351,8 @@ class WattixCard extends HTMLElement {
     const el = document.createElement("div");
     el.className = "em-device";
     const pending = device.remaining_seconds !== null && device.remaining_seconds !== undefined;
-    if (device.active) el.classList.add("on");
+    if (device.mode === "disabled") el.classList.add("disabled");
+    else if (device.active) el.classList.add("on");
     else if (pending) el.classList.add("pending");
 
     let sub = `${STATUS_LABELS[device.status] || device.status} · ${fmtPower(device.power_w)}`;
@@ -355,6 +375,7 @@ class WattixCard extends HTMLElement {
         <button data-mode="auto" class="${device.mode === "auto" ? "active" : ""}">Auto</button>
         <button data-mode="on" class="${device.mode === "on" ? "active" : ""}">An</button>
         <button data-mode="off" class="${device.mode === "off" ? "active" : ""}">Aus</button>
+        <button data-mode="disabled" class="${device.mode === "disabled" ? "active" : ""}" title="Wattix fasst diesen Schalter nicht an">Regelung aus</button>
       </div>
       <button class="em-icon-btn" data-action="edit" title="Bearbeiten">✎</button>
       <button class="em-icon-btn" data-action="delete" title="Löschen">🗑</button>

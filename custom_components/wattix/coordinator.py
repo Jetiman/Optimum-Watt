@@ -30,6 +30,7 @@ from .const import (
     DEFAULT_OFF_DELAY_S,
     DOMAIN,
     MODE_AUTO,
+    MODE_DISABLED,
     MODE_OFF,
     MODE_ON,
     STORAGE_VERSION,
@@ -70,6 +71,8 @@ class Device:
         return max(self.power_w - self.hysteresis_w, 0)
 
     def status_text(self) -> str:
+        if self.mode == MODE_DISABLED:
+            return "disabled"
         if self.mode == MODE_ON:
             return "manual_on"
         if self.mode == MODE_OFF:
@@ -179,8 +182,20 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
         await self._evaluate()
 
     async def request_reeval(self) -> None:
-        """Public helper for entities/services to trigger an immediate re-evaluation."""
-        await self.async_request_refresh()
+        """Schedule a cascade re-evaluation without blocking the caller on it.
+
+        Evaluation can call out to real switch entities (network round trips
+        to physical devices), which must never make a button in the UI feel
+        like it hung. Callers that change device/auto-mode state should push
+        a state update immediately (see `_notify_and_reeval`) and let this
+        run after.
+        """
+        self.hass.async_create_task(self.async_request_refresh())
+
+    def _notify_and_reeval(self) -> None:
+        """Push current state to listeners now, then re-evaluate in the background."""
+        self.async_update_listeners()
+        self.hass.async_create_task(self.async_request_refresh())
 
     # -- Device CRUD -----------------------------------------------------
 
@@ -214,7 +229,7 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
         )
         self.devices.append(device)
         await self._async_save_devices()
-        await self.async_request_refresh()
+        self._notify_and_reeval()
         return device
 
     async def async_update_device(self, device_id: str, **fields: Any) -> Device:
@@ -230,15 +245,19 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
         ):
             if key in fields and fields[key] is not None:
                 setattr(device, key, fields[key])
+        if "mode" in fields and fields["mode"] is not None:
+            # Avoid a stale timer instantly firing if the device returns to auto later.
+            device.surplus_since = None
+            device.deficit_since = None
         await self._async_save_devices()
-        await self.async_request_refresh()
+        self._notify_and_reeval()
         return device
 
     async def async_remove_device(self, device_id: str) -> None:
         device = self._get_device(device_id)
         self.devices.remove(device)
         await self._async_save_devices()
-        await self.async_request_refresh()
+        self._notify_and_reeval()
 
     async def async_reorder_devices(self, device_ids: list[str]) -> None:
         by_id = {d.id: d for d in self.devices}
@@ -246,7 +265,11 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
             raise ValueError("device_ids must match the existing device set")
         self.devices = [by_id[i] for i in device_ids]
         await self._async_save_devices()
-        await self.async_request_refresh()
+        self._notify_and_reeval()
+
+    def set_auto_mode(self, enabled: bool) -> None:
+        self.auto_mode = enabled
+        self._notify_and_reeval()
 
     # -- Cascade evaluation ------------------------------------------------
 

@@ -13,7 +13,7 @@ import voluptuous as vol
 from homeassistant.components import websocket_api
 from homeassistant.core import HomeAssistant, callback
 
-from .const import DOMAIN, MODE_AUTO, MODE_OFF, MODE_ON
+from .const import DOMAIN, MODE_AUTO, MODE_DISABLED, MODE_OFF, MODE_ON
 from .coordinator import WattixCoordinator
 
 
@@ -79,7 +79,7 @@ async def ws_add_device(hass, connection, msg):
         vol.Optional("hysteresis_w"): vol.Coerce(float),
         vol.Optional("on_delay_s"): vol.Coerce(int),
         vol.Optional("off_delay_s"): vol.Coerce(int),
-        vol.Optional("mode"): vol.In([MODE_AUTO, MODE_ON, MODE_OFF]),
+        vol.Optional("mode"): vol.In([MODE_AUTO, MODE_ON, MODE_OFF, MODE_DISABLED]),
     }
 )
 @websocket_api.require_admin
@@ -162,8 +162,7 @@ async def ws_set_auto_mode(hass, connection, msg):
     if coordinator is None:
         connection.send_error(msg["id"], "not_found", "Unbekannte entry_id")
         return
-    coordinator.auto_mode = msg["enabled"]
-    await coordinator.async_request_refresh()
+    coordinator.set_auto_mode(msg["enabled"])
     connection.send_result(msg["id"], coordinator.state_dict())
 
 

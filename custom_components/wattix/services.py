@@ -7,7 +7,7 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 
-from .const import DOMAIN, MODE_AUTO, MODE_OFF, MODE_ON
+from .const import DOMAIN, MODE_AUTO, MODE_DISABLED, MODE_OFF, MODE_ON
 from .coordinator import WattixCoordinator
 
 SERVICE_ADD_DEVICE = "add_device"
@@ -49,7 +49,7 @@ SET_DEVICE_MODE_SCHEMA = vol.Schema(
     {
         vol.Required(ATTR_ENTRY_ID): cv.string,
         vol.Required(ATTR_DEVICE_ID): cv.string,
-        vol.Required(ATTR_MODE): vol.In([MODE_AUTO, MODE_ON, MODE_OFF]),
+        vol.Required(ATTR_MODE): vol.In([MODE_AUTO, MODE_ON, MODE_OFF, MODE_DISABLED]),
     }
 )
 
@@ -104,8 +104,7 @@ async def async_register_services(hass: HomeAssistant) -> None:
 
     async def handle_set_auto_mode(call: ServiceCall) -> None:
         coordinator = _coordinator(hass, call.data[ATTR_ENTRY_ID])
-        coordinator.auto_mode = call.data[ATTR_ENABLED]
-        await coordinator.request_reeval()
+        coordinator.set_auto_mode(call.data[ATTR_ENABLED])
 
     hass.services.async_register(
         DOMAIN, SERVICE_ADD_DEVICE, handle_add_device, schema=ADD_DEVICE_SCHEMA
