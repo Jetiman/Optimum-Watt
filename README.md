@@ -97,7 +97,7 @@ Entitäten für Dashboards/Automatisierungen angelegt:
 |---|---|---|
 | Automatik | `switch` | Schaltet die gesamte Kaskadensteuerung ein/aus |
 | Überschuss | `sensor` | Aktuelle Einspeiseleistung (normalisiert, W) |
-| Aktive Geräte | `sensor` | Anzahl aktuell eingeschalteter Geräte |
+| Geregelte Geräte | `sensor` | Anzahl Geräte im Modus Auto (unabhängig davon, ob sie gerade an oder aus sind) |
 
 Die einzelnen Geräte selbst (Name, Priorität, Status, Schwellen) sind
 bewusst **keine** eigenen HA-Entitäten, sondern eine dynamische Liste, die

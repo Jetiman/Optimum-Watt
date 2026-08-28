@@ -301,7 +301,7 @@ class WattixCard extends HTMLElement {
     if (!state) return;
 
     this._els.surplusValue.textContent = fmtPower(state.surplus_w);
-    this._els.activeCount.textContent = `${state.active_count} / ${state.devices.length} aktiv`;
+    this._els.activeCount.textContent = `${state.regulated_count} / ${state.devices.length} geregelt`;
     this._els.autoIcon.setAttribute(
       "icon",
       state.auto_mode ? "mdi:toggle-switch" : "mdi:toggle-switch-off-outline"

@@ -358,15 +358,21 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
         return None
 
     @property
-    def active_device_count(self) -> int:
-        return sum(1 for d in self.devices if d.active)
+    def regulated_device_count(self) -> int:
+        """How many devices are under active cascade control (mode auto).
+
+        Deliberately not a count of devices currently drawing power: a
+        device that is off because there isn't enough surplus right now is
+        still being regulated, while a "Regelung aus" device never is.
+        """
+        return sum(1 for d in self.devices if d.mode == MODE_AUTO)
 
     def state_dict(self) -> dict[str, Any]:
         """Full serialized state, used by the websocket API and card."""
         return {
             "auto_mode": self.auto_mode,
             "surplus_w": self.current_power_w,
-            "active_count": self.active_device_count,
+            "regulated_count": self.regulated_device_count,
             "devices": [
                 d.to_dict(self.device_seconds_remaining(d)) for d in self.devices
             ],

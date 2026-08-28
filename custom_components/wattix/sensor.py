@@ -21,7 +21,7 @@ async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
     coordinator: WattixCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities([SurplusSensor(coordinator), ActiveDeviceCountSensor(coordinator)])
+    async_add_entities([SurplusSensor(coordinator), RegulatedDeviceCountSensor(coordinator)])
 
 
 class SurplusSensor(WattixEntity, SensorEntity):
@@ -42,11 +42,15 @@ class SurplusSensor(WattixEntity, SensorEntity):
         return self.coordinator.current_power_w
 
 
-class ActiveDeviceCountSensor(WattixEntity, SensorEntity):
-    """How many devices are currently switched on."""
+class RegulatedDeviceCountSensor(WattixEntity, SensorEntity):
+    """How many devices are under active cascade control (mode auto).
 
-    _attr_name = "Aktive Geräte"
-    _attr_icon = "mdi:counter"
+    Not how many are currently drawing power — a device waiting for more
+    surplus is still regulated, while a "Regelung aus" device never is.
+    """
+
+    _attr_name = "Geregelte Geräte"
+    _attr_icon = "mdi:auto-mode"
     _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(self, coordinator: WattixCoordinator) -> None:
@@ -55,7 +59,7 @@ class ActiveDeviceCountSensor(WattixEntity, SensorEntity):
 
     @property
     def native_value(self) -> int:
-        return self.coordinator.active_device_count
+        return self.coordinator.regulated_device_count
 
     @property
     def extra_state_attributes(self) -> dict:
