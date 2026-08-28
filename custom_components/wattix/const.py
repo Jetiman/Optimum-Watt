@@ -1,9 +1,9 @@
-"""Constants for the Einspeise-Manager integration."""
+"""Constants for the Wattix integration."""
 from __future__ import annotations
 
 from datetime import timedelta
 
-DOMAIN = "einspeise_manager"
+DOMAIN = "wattix"
 
 # Config entry data keys
 CONF_GRID_POWER_ENTITY = "grid_power_entity"

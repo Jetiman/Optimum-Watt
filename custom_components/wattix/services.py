@@ -1,4 +1,4 @@
-"""Service handlers for Einspeise-Manager (automation-friendly device control)."""
+"""Service handlers for Wattix (automation-friendly device control)."""
 from __future__ import annotations
 
 import voluptuous as vol
@@ -8,7 +8,7 @@ from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 
 from .const import DOMAIN, MODE_AUTO, MODE_OFF, MODE_ON
-from .coordinator import EinspeiseManagerCoordinator
+from .coordinator import WattixCoordinator
 
 SERVICE_ADD_DEVICE = "add_device"
 SERVICE_REMOVE_DEVICE = "remove_device"
@@ -61,7 +61,7 @@ SET_AUTO_MODE_SCHEMA = vol.Schema(
 )
 
 
-def _coordinator(hass: HomeAssistant, entry_id: str) -> EinspeiseManagerCoordinator:
+def _coordinator(hass: HomeAssistant, entry_id: str) -> WattixCoordinator:
     coordinator = hass.data.get(DOMAIN, {}).get(entry_id)
     if coordinator is None:
         raise ServiceValidationError(f"Unbekannte entry_id: {entry_id}")
@@ -69,7 +69,7 @@ def _coordinator(hass: HomeAssistant, entry_id: str) -> EinspeiseManagerCoordina
 
 
 async def async_register_services(hass: HomeAssistant) -> None:
-    """Register einspeise_manager.* services, once per hass instance."""
+    """Register wattix.* services, once per hass instance."""
 
     async def handle_add_device(call: ServiceCall) -> None:
         coordinator = _coordinator(hass, call.data[ATTR_ENTRY_ID])

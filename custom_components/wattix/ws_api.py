@@ -1,4 +1,4 @@
-"""WebSocket API used by the Einspeise-Manager dashboard card.
+"""WebSocket API used by the Wattix dashboard card.
 
 All device management (add/edit/remove/reorder) happens through these
 commands so the card can offer a live, app-like interface without round
@@ -14,18 +14,18 @@ from homeassistant.components import websocket_api
 from homeassistant.core import HomeAssistant, callback
 
 from .const import DOMAIN, MODE_AUTO, MODE_OFF, MODE_ON
-from .coordinator import EinspeiseManagerCoordinator
+from .coordinator import WattixCoordinator
 
 
 def _get_coordinator(
     hass: HomeAssistant, entry_id: str
-) -> EinspeiseManagerCoordinator | None:
+) -> WattixCoordinator | None:
     return hass.data.get(DOMAIN, {}).get(entry_id)
 
 
 @websocket_api.websocket_command(
     {
-        vol.Required("type"): "einspeise_manager/list_devices",
+        vol.Required("type"): "wattix/list_devices",
         vol.Required("entry_id"): str,
     }
 )
@@ -40,7 +40,7 @@ async def ws_list_devices(hass, connection, msg):
 
 @websocket_api.websocket_command(
     {
-        vol.Required("type"): "einspeise_manager/add_device",
+        vol.Required("type"): "wattix/add_device",
         vol.Required("entry_id"): str,
         vol.Required("name"): str,
         vol.Required("entity_id"): str,
@@ -70,7 +70,7 @@ async def ws_add_device(hass, connection, msg):
 
 @websocket_api.websocket_command(
     {
-        vol.Required("type"): "einspeise_manager/update_device",
+        vol.Required("type"): "wattix/update_device",
         vol.Required("entry_id"): str,
         vol.Required("device_id"): str,
         vol.Optional("name"): str,
@@ -104,7 +104,7 @@ async def ws_update_device(hass, connection, msg):
 
 @websocket_api.websocket_command(
     {
-        vol.Required("type"): "einspeise_manager/remove_device",
+        vol.Required("type"): "wattix/remove_device",
         vol.Required("entry_id"): str,
         vol.Required("device_id"): str,
     }
@@ -126,7 +126,7 @@ async def ws_remove_device(hass, connection, msg):
 
 @websocket_api.websocket_command(
     {
-        vol.Required("type"): "einspeise_manager/reorder_devices",
+        vol.Required("type"): "wattix/reorder_devices",
         vol.Required("entry_id"): str,
         vol.Required("device_ids"): [str],
     }
@@ -150,7 +150,7 @@ async def ws_reorder_devices(hass, connection, msg):
 
 @websocket_api.websocket_command(
     {
-        vol.Required("type"): "einspeise_manager/set_auto_mode",
+        vol.Required("type"): "wattix/set_auto_mode",
         vol.Required("entry_id"): str,
         vol.Required("enabled"): bool,
     }
@@ -169,7 +169,7 @@ async def ws_set_auto_mode(hass, connection, msg):
 
 @websocket_api.websocket_command(
     {
-        vol.Required("type"): "einspeise_manager/subscribe",
+        vol.Required("type"): "wattix/subscribe",
         vol.Required("entry_id"): str,
     }
 )
@@ -193,7 +193,7 @@ async def ws_subscribe(hass, connection, msg):
 
 
 def async_register_websocket_commands(hass: HomeAssistant) -> None:
-    """Register all einspeise_manager/* websocket commands, once per hass instance."""
+    """Register all wattix/* websocket commands, once per hass instance."""
     websocket_api.async_register_command(hass, ws_list_devices)
     websocket_api.async_register_command(hass, ws_add_device)
     websocket_api.async_register_command(hass, ws_update_device)

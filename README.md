@@ -1,4 +1,4 @@
-# Einspeise-Manager
+# Wattix
 
 Eine generische PV-Überschusssteuerung für Home Assistant. Statt fester
 Heizstufen legst du beliebige Geräte (z. B. Relais eines Shelly 4PM) direkt
@@ -38,8 +38,8 @@ sofort – kein Neustart, kein YAML.
 
 1. HACS → Integrationen → Menü (⋮) → *Benutzerdefinierte Repositories*.
 2. Repository-URL hinzufügen, Kategorie **Integration**.
-3. „Einspeise-Manager" installieren und Home Assistant neu starten.
-4. Einstellungen → Geräte & Dienste → Integration hinzufügen → „Einspeise-Manager".
+3. „Wattix" installieren und Home Assistant neu starten.
+4. Einstellungen → Geräte & Dienste → Integration hinzufügen → „Wattix".
 
 ## Einrichtung
 
@@ -58,17 +58,17 @@ Die Integration liefert eine eigene Lovelace-Karte mit, die automatisch als
 Frontend-Ressource registriert wird. Füge sie zu einem Dashboard hinzu:
 
 ```yaml
-type: custom:einspeise-manager-card
+type: custom:wattix-card
 ```
 
-Mehr braucht es nicht – die Karte findet deine Einspeise-Manager-Instanz
+Mehr braucht es nicht – die Karte findet deine Wattix-Instanz
 automatisch. Optional lässt sich ein Titel setzen oder (bei mehreren
 Instanzen) die passende explizit auswählen:
 
 ```yaml
-type: custom:einspeise-manager-card
+type: custom:wattix-card
 title: PV-Überschuss
-entry_id: 01H...   # zu finden in der URL unter Einstellungen → Geräte & Dienste → Einspeise-Manager
+entry_id: 01H...   # zu finden in der URL unter Einstellungen → Geräte & Dienste → Wattix
 ```
 
 Die Karte zeigt:
@@ -82,7 +82,7 @@ Die Karte zeigt:
 
 ## Erzeugte Entitäten
 
-Pro Instanz wird ein Gerät „Einspeise-Manager" mit zwei zusätzlichen
+Pro Instanz wird ein Gerät „Wattix" mit zwei zusätzlichen
 Entitäten für Dashboards/Automatisierungen angelegt:
 
 | Entität | Domain | Beschreibung |
@@ -102,13 +102,13 @@ muss.
 Für Skripte und Automatisierungen stehen folgende Services bereit
 (Parameter siehe Dienste-Übersicht in Home Assistant):
 
-- `einspeise_manager.add_device`
-- `einspeise_manager.remove_device`
-- `einspeise_manager.set_device_mode` (`auto` / `on` / `off`)
-- `einspeise_manager.set_auto_mode`
+- `wattix.add_device`
+- `wattix.remove_device`
+- `wattix.set_device_mode` (`auto` / `on` / `off`)
+- `wattix.set_auto_mode`
 
 Die Geräte-ID (`device_id`) eines Geräts findest du in der Karte oder per
-Entwicklerwerkzeuge → WebSocket-Befehl `einspeise_manager/list_devices`
+Entwicklerwerkzeuge → WebSocket-Befehl `wattix/list_devices`
 (mit der `entry_id` der jeweiligen Instanz).
 
 ## Beispiel: Shelly 4PM

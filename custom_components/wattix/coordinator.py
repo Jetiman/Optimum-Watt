@@ -1,4 +1,4 @@
-"""Core cascade control logic for the Einspeise-Manager integration.
+"""Core cascade control logic for the Wattix integration.
 
 As long as enough power is being fed into the grid for a sustained period,
 devices are switched on one after another in priority order (list order).
@@ -115,7 +115,7 @@ class Device:
         )
 
 
-class EinspeiseManagerCoordinator(DataUpdateCoordinator[None]):
+class WattixCoordinator(DataUpdateCoordinator[None]):
     """Coordinates surplus readings and drives the device cascade."""
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
@@ -309,7 +309,7 @@ class EinspeiseManagerCoordinator(DataUpdateCoordinator[None]):
         device.surplus_since = None
         device.deficit_since = None
         device.last_on_at = now
-        _LOGGER.debug("Einspeise-Manager: switching %s ON", device.entity_id)
+        _LOGGER.debug("Wattix: switching %s ON", device.entity_id)
         await self.hass.services.async_call(
             "switch", "turn_on", {"entity_id": device.entity_id}, blocking=True
         )
@@ -318,7 +318,7 @@ class EinspeiseManagerCoordinator(DataUpdateCoordinator[None]):
         device.active = False
         device.surplus_since = None
         device.deficit_since = None
-        _LOGGER.debug("Einspeise-Manager: switching %s OFF", device.entity_id)
+        _LOGGER.debug("Wattix: switching %s OFF", device.entity_id)
         await self.hass.services.async_call(
             "switch", "turn_off", {"entity_id": device.entity_id}, blocking=True
         )

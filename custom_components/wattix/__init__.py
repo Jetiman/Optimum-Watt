@@ -1,4 +1,4 @@
-"""The Einspeise-Manager integration."""
+"""The Wattix integration."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -9,12 +9,12 @@ from homeassistant.components.frontend import add_extra_js_url
 from homeassistant.components.http import StaticPathConfig
 
 from .const import DOMAIN, PLATFORMS
-from .coordinator import EinspeiseManagerCoordinator
+from .coordinator import WattixCoordinator
 from .services import async_register_services
 from .ws_api import async_register_websocket_commands
 
 CARD_URL_BASE = f"/{DOMAIN}_files"
-CARD_FILENAME = "einspeise-manager-card.js"
+CARD_FILENAME = "wattix-card.js"
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
@@ -26,10 +26,10 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up Einspeise-Manager from a config entry."""
+    """Set up Wattix from a config entry."""
     hass.data.setdefault(DOMAIN, {})
 
-    coordinator = EinspeiseManagerCoordinator(hass, entry)
+    coordinator = WattixCoordinator(hass, entry)
     await coordinator.async_setup()
     await coordinator.async_config_entry_first_refresh()
 
@@ -64,11 +64,11 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
-        coordinator: EinspeiseManagerCoordinator = hass.data[DOMAIN].pop(entry.entry_id)
+        coordinator: WattixCoordinator = hass.data[DOMAIN].pop(entry.entry_id)
         coordinator.async_unload()
     return unload_ok
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Delete the persisted device list along with the config entry."""
-    await EinspeiseManagerCoordinator.async_remove_storage(hass, entry.entry_id)
+    await WattixCoordinator.async_remove_storage(hass, entry.entry_id)

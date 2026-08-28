@@ -1,4 +1,4 @@
-"""Aggregate status sensors for Einspeise-Manager.
+"""Aggregate status sensors for Wattix.
 
 Per-device state is not exposed as individual entities — it lives in the
 coordinator and is served to the dashboard card via the websocket API.
@@ -13,18 +13,18 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
-from .coordinator import EinspeiseManagerCoordinator
-from .entity import EinspeiseManagerEntity
+from .coordinator import WattixCoordinator
+from .entity import WattixEntity
 
 
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
-    coordinator: EinspeiseManagerCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator: WattixCoordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_entities([SurplusSensor(coordinator), ActiveDeviceCountSensor(coordinator)])
 
 
-class SurplusSensor(EinspeiseManagerEntity, SensorEntity):
+class SurplusSensor(WattixEntity, SensorEntity):
     """Current grid feed-in surplus, normalized to positive = feed-in."""
 
     _attr_name = "Überschuss"
@@ -33,7 +33,7 @@ class SurplusSensor(EinspeiseManagerEntity, SensorEntity):
     _attr_native_unit_of_measurement = UnitOfPower.WATT
     _attr_icon = "mdi:transmission-tower-export"
 
-    def __init__(self, coordinator: EinspeiseManagerCoordinator) -> None:
+    def __init__(self, coordinator: WattixCoordinator) -> None:
         super().__init__(coordinator)
         self._attr_unique_id = f"{coordinator.entry.entry_id}_surplus"
 
@@ -42,14 +42,14 @@ class SurplusSensor(EinspeiseManagerEntity, SensorEntity):
         return self.coordinator.current_power_w
 
 
-class ActiveDeviceCountSensor(EinspeiseManagerEntity, SensorEntity):
+class ActiveDeviceCountSensor(WattixEntity, SensorEntity):
     """How many devices are currently switched on."""
 
     _attr_name = "Aktive Geräte"
     _attr_icon = "mdi:counter"
     _attr_state_class = SensorStateClass.MEASUREMENT
 
-    def __init__(self, coordinator: EinspeiseManagerCoordinator) -> None:
+    def __init__(self, coordinator: WattixCoordinator) -> None:
         super().__init__(coordinator)
         self._attr_unique_id = f"{coordinator.entry.entry_id}_active_devices"
 

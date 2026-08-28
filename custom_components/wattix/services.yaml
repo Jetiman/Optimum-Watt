@@ -3,12 +3,12 @@ add_device:
   description: Fügt ein neues, per PV-Überschuss gesteuertes Gerät hinzu (wird ans Ende der Prioritätsliste angehängt).
   fields:
     entry_id:
-      name: Einspeise-Manager
+      name: Wattix
       description: Die Instanz, zu der das Gerät hinzugefügt werden soll.
       required: true
       selector:
         config_entry:
-          integration: einspeise_manager
+          integration: wattix
     name:
       name: Name
       description: Anzeigename des Geräts.
@@ -74,12 +74,12 @@ remove_device:
   description: Entfernt ein Gerät aus der Kaskadensteuerung.
   fields:
     entry_id:
-      name: Einspeise-Manager
+      name: Wattix
       description: Die betroffene Instanz.
       required: true
       selector:
         config_entry:
-          integration: einspeise_manager
+          integration: wattix
     device_id:
       name: Geräte-ID
       description: Die ID des zu entfernenden Geräts (siehe Karte oder list_devices).
@@ -92,12 +92,12 @@ set_device_mode:
   description: Erzwingt Automatik, An oder Aus für ein einzelnes Gerät.
   fields:
     entry_id:
-      name: Einspeise-Manager
+      name: Wattix
       description: Die betroffene Instanz.
       required: true
       selector:
         config_entry:
-          integration: einspeise_manager
+          integration: wattix
     device_id:
       name: Geräte-ID
       description: Die ID des betroffenen Geräts.
@@ -120,12 +120,12 @@ set_auto_mode:
   description: Schaltet die gesamte Kaskadensteuerung einer Instanz ein oder aus.
   fields:
     entry_id:
-      name: Einspeise-Manager
+      name: Wattix
       description: Die betroffene Instanz.
       required: true
       selector:
         config_entry:
-          integration: einspeise_manager
+          integration: wattix
     enabled:
       name: Aktiv
       description: true = Automatik an, false = Automatik aus.

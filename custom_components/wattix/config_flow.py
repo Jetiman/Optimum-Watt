@@ -1,4 +1,4 @@
-"""Config flow for Einspeise-Manager.
+"""Config flow for Wattix.
 
 Only the grid feed-in power sensor is configured here. Devices are added,
 prioritized and tuned afterwards in the integration's own dashboard card.
@@ -33,7 +33,7 @@ def _schema(defaults: dict[str, Any]) -> vol.Schema:
     )
 
 
-class EinspeiseManagerConfigFlow(ConfigFlow, domain=DOMAIN):
+class WattixConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle the initial setup flow."""
 
     VERSION = 1
@@ -42,17 +42,17 @@ class EinspeiseManagerConfigFlow(ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> Any:
         if user_input is not None:
-            return self.async_create_entry(title="Einspeise-Manager", data=user_input)
+            return self.async_create_entry(title="Wattix", data=user_input)
 
         return self.async_show_form(step_id="user", data_schema=_schema({}))
 
     @staticmethod
     @callback
     def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
-        return EinspeiseManagerOptionsFlow(config_entry)
+        return WattixOptionsFlow(config_entry)
 
 
-class EinspeiseManagerOptionsFlow(OptionsFlow):
+class WattixOptionsFlow(OptionsFlow):
     """Allow editing the grid sensor after setup."""
 
     def __init__(self, config_entry: ConfigEntry) -> None:

@@ -1,4 +1,4 @@
-"""The global automatic-mode switch for Einspeise-Manager."""
+"""The global automatic-mode switch for Wattix."""
 from __future__ import annotations
 
 from typing import Any
@@ -10,24 +10,24 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
 from .const import DOMAIN
-from .coordinator import EinspeiseManagerCoordinator
-from .entity import EinspeiseManagerEntity
+from .coordinator import WattixCoordinator
+from .entity import WattixEntity
 
 
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
-    coordinator: EinspeiseManagerCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator: WattixCoordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_entities([AutoModeSwitch(coordinator)])
 
 
-class AutoModeSwitch(EinspeiseManagerEntity, RestoreEntity, SwitchEntity):
+class AutoModeSwitch(WattixEntity, RestoreEntity, SwitchEntity):
     """Enable/disable the whole surplus cascade."""
 
     _attr_name = "Automatik"
     _attr_icon = "mdi:sun-wireless"
 
-    def __init__(self, coordinator: EinspeiseManagerCoordinator) -> None:
+    def __init__(self, coordinator: WattixCoordinator) -> None:
         super().__init__(coordinator)
         self._attr_unique_id = f"{coordinator.entry.entry_id}_auto_mode"
 

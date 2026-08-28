@@ -1,8 +1,8 @@
 /**
- * Einspeise-Manager Lovelace card.
+ * Wattix Lovelace card.
  *
  * Plain Web Component, no build step, no external dependencies. Talks to
- * the integration's websocket API (einspeise_manager/*) to list, add,
+ * the integration's websocket API (wattix/*) to list, add,
  * edit, reorder and delete devices, and receives live state pushes via a
  * subscription — the card itself carries no device configuration.
  */
@@ -37,7 +37,7 @@ function escapeHtml(str) {
   }[c]));
 }
 
-class EinspeiseManagerCard extends HTMLElement {
+class WattixCard extends HTMLElement {
   setConfig(config) {
     this._config = config || {};
     this._built = false;
@@ -87,7 +87,7 @@ class EinspeiseManagerCard extends HTMLElement {
     }
     try {
       const entries = await this._hass.callWS({ type: "config_entries/get" });
-      const match = entries.find((e) => e.domain === "einspeise_manager");
+      const match = entries.find((e) => e.domain === "wattix");
       if (match) this._entryId = match.entry_id;
     } catch (err) {
       // ignore, handled by the "not configured" empty state below
@@ -98,7 +98,7 @@ class EinspeiseManagerCard extends HTMLElement {
     if (!this._hass || this._subscribed) return;
     await this._ensureEntryId();
     if (!this._entryId) {
-      this._renderError("Keine Einspeise-Manager-Instanz gefunden.");
+      this._renderError("Keine Wattix-Instanz gefunden.");
       return;
     }
     this._subscribed = true;
@@ -107,7 +107,7 @@ class EinspeiseManagerCard extends HTMLElement {
         this._latestState = state;
         this._render();
       },
-      { type: "einspeise_manager/subscribe", entry_id: this._entryId }
+      { type: "wattix/subscribe", entry_id: this._entryId }
     );
   }
 
@@ -124,11 +124,11 @@ class EinspeiseManagerCard extends HTMLElement {
 
   _toggleAuto() {
     if (!this._latestState) return;
-    this._callWS({ type: "einspeise_manager/set_auto_mode", enabled: !this._latestState.auto_mode });
+    this._callWS({ type: "wattix/set_auto_mode", enabled: !this._latestState.auto_mode });
   }
 
   _setMode(deviceId, mode) {
-    this._callWS({ type: "einspeise_manager/update_device", device_id: deviceId, mode });
+    this._callWS({ type: "wattix/update_device", device_id: deviceId, mode });
   }
 
   _moveDevice(deviceId, direction) {
@@ -137,12 +137,12 @@ class EinspeiseManagerCard extends HTMLElement {
     const swapIdx = idx + direction;
     if (swapIdx < 0 || swapIdx >= ids.length) return;
     [ids[idx], ids[swapIdx]] = [ids[swapIdx], ids[idx]];
-    this._callWS({ type: "einspeise_manager/reorder_devices", device_ids: ids });
+    this._callWS({ type: "wattix/reorder_devices", device_ids: ids });
   }
 
   _deleteDevice(deviceId, name) {
     if (!window.confirm(`Gerät "${name}" wirklich löschen?`)) return;
-    this._callWS({ type: "einspeise_manager/remove_device", device_id: deviceId });
+    this._callWS({ type: "wattix/remove_device", device_id: deviceId });
   }
 
   _openAdd() {
@@ -192,9 +192,9 @@ class EinspeiseManagerCard extends HTMLElement {
       return;
     }
     if (this._addingNew) {
-      this._callWS({ type: "einspeise_manager/add_device", ...payload });
+      this._callWS({ type: "wattix/add_device", ...payload });
     } else {
-      this._callWS({ type: "einspeise_manager/update_device", device_id: this._editingId, ...payload });
+      this._callWS({ type: "wattix/update_device", device_id: this._editingId, ...payload });
     }
     this._cancelForm();
   }
@@ -244,7 +244,7 @@ class EinspeiseManagerCard extends HTMLElement {
     const card = document.createElement("ha-card");
     card.innerHTML = `
       <div class="em-header">
-        <div class="em-title">${escapeHtml(this._config.title || "Einspeise-Manager")}</div>
+        <div class="em-title">${escapeHtml(this._config.title || "Wattix")}</div>
         <div class="em-header-right">
           <span class="em-active-count" id="em-active-count"></span>
           <ha-icon class="em-auto-toggle" id="em-auto-icon"></ha-icon>
@@ -456,15 +456,15 @@ class EinspeiseManagerCard extends HTMLElement {
   }
 
   static getStubConfig() {
-    return { type: "custom:einspeise-manager-card" };
+    return { type: "custom:wattix-card" };
   }
 }
 
-customElements.define("einspeise-manager-card", EinspeiseManagerCard);
+customElements.define("wattix-card", WattixCard);
 
 window.customCards = window.customCards || [];
 window.customCards.push({
-  type: "einspeise-manager-card",
-  name: "Einspeise-Manager",
+  type: "wattix-card",
+  name: "Wattix",
   description: "PV-Überschuss-Kaskadensteuerung: Geräte anlegen, priorisieren und live steuern.",
 });
