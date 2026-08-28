@@ -1,7 +1,6 @@
 # Einspeise-Manager
 
-Eine kaskadierende Überschusssteuerung für Home Assistant – im Stil von
-[solarmanager.ch](https://www.solarmanager.ch/), aber für den eigenen
+Eine kaskadierende Überschusssteuerung für Home Assistant, für den eigenen
 Warmwasserspeicher mit mehreren Heizstäben, z. B. gesteuert über einen
 **Shelly 4PM**.
 

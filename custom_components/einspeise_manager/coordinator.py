@@ -1,11 +1,10 @@
 """Core cascade control logic for the Einspeise-Manager integration.
 
-Mirrors how solarmanager.ch style controllers work: as long as enough
-power is being fed into the grid for a sustained period, consumers are
-switched on one after another (stage by stage). As soon as the surplus
-drops away for a sustained period, the most recently activated consumer
-is switched off again (LIFO), with hysteresis to avoid short-cycling the
-relays.
+As long as enough power is being fed into the grid for a sustained period,
+consumers are switched on one after another (stage by stage). As soon as
+the surplus drops away for a sustained period, the most recently activated
+consumer is switched off again (LIFO), with hysteresis to avoid
+short-cycling the relays.
 """
 from __future__ import annotations
 
