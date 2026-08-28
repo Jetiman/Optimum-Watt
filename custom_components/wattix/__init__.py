@@ -8,6 +8,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.components.frontend import add_extra_js_url
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.components.panel_custom import async_register_panel
+from homeassistant.helpers import config_validation as cv
 
 from .const import DOMAIN, PLATFORMS
 from .coordinator import WattixCoordinator
@@ -17,6 +18,9 @@ from .ws_api import async_register_websocket_commands
 CARD_URL_BASE = f"/{DOMAIN}_files"
 CARD_FILENAME = "wattix-card.js"
 PANEL_URL_PATH = "wattix"
+
+# Wattix is only ever set up via the UI config flow, never through YAML.
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
