@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Wattix">
+  <rect width="100" height="100" rx="20" fill="#1C2126"/>
+  <rect x="22.5" y="54" width="10" height="24" rx="2.5" fill="#3C4550"/>
+  <rect x="37.5" y="40" width="10" height="38" rx="2.5" fill="#B96A2C"/>
+  <rect x="52.5" y="26" width="10" height="52" rx="2.5" fill="#D98A3D"/>
+  <rect x="67.5" y="12" width="10" height="66" rx="2.5" fill="#F5A623"/>
+</svg>

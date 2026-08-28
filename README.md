@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/wattix-logo.svg" width="320" alt="Wattix"></p>
+
 # Wattix – Energie intelligent steuern
 
 Eine generische PV-Überschusssteuerung für Home Assistant. Statt fester

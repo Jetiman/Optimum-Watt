@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 100" width="400" height="100" role="img" aria-label="Wattix">
+  <rect x="20" y="56" width="12" height="26" rx="3" fill="#3C4550"/>
+  <rect x="39" y="40" width="12" height="42" rx="3" fill="#B96A2C"/>
+  <rect x="58" y="24" width="12" height="58" rx="3" fill="#D98A3D"/>
+  <rect x="77" y="8" width="12" height="74" rx="3" fill="#F5A623"/>
+  <text x="110" y="70" font-family="'Helvetica Neue', Arial, sans-serif" font-weight="700"
+        font-size="46" letter-spacing="-0.5" fill="#1C2126">Wattix</text>
+</svg>
