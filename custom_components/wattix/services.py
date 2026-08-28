@@ -25,6 +25,10 @@ ATTR_ON_DELAY_S = "on_delay_s"
 ATTR_OFF_DELAY_S = "off_delay_s"
 ATTR_MODE = "mode"
 ATTR_ENABLED = "enabled"
+ATTR_MIN_RUNTIME_S = "min_runtime_s"
+ATTR_MIN_RUNTIME_DEADLINE = "min_runtime_deadline"
+
+DEADLINE_SCHEMA = vol.Match(r"^([01]\d|2[0-3]):[0-5]\d$")
 
 ADD_DEVICE_SCHEMA = vol.Schema(
     {
@@ -35,6 +39,8 @@ ADD_DEVICE_SCHEMA = vol.Schema(
         vol.Optional(ATTR_HYSTERESIS_W): vol.Coerce(float),
         vol.Optional(ATTR_ON_DELAY_S): vol.Coerce(int),
         vol.Optional(ATTR_OFF_DELAY_S): vol.Coerce(int),
+        vol.Optional(ATTR_MIN_RUNTIME_S): vol.Coerce(int),
+        vol.Optional(ATTR_MIN_RUNTIME_DEADLINE): DEADLINE_SCHEMA,
     }
 )
 
@@ -80,6 +86,8 @@ async def async_register_services(hass: HomeAssistant) -> None:
             hysteresis_w=call.data.get(ATTR_HYSTERESIS_W),
             on_delay_s=call.data.get(ATTR_ON_DELAY_S),
             off_delay_s=call.data.get(ATTR_OFF_DELAY_S),
+            min_runtime_s=call.data.get(ATTR_MIN_RUNTIME_S),
+            min_runtime_deadline=call.data.get(ATTR_MIN_RUNTIME_DEADLINE),
         )
 
     async def handle_remove_device(call: ServiceCall) -> None:

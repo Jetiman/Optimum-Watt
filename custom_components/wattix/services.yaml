@@ -68,6 +68,24 @@ add_device:
           step: 10
           unit_of_measurement: s
           mode: box
+    min_runtime_s:
+      name: Mindestlaufzeit pro Tag
+      description: Sekunden, die das Gerät pro Tag mindestens laufen soll. Wird die Zeit sonst nicht erreicht, schaltet Wattix das Gerät notfalls auch ohne Überschuss ein, rechtzeitig vor der Deadline. Zusammen mit min_runtime_deadline angeben.
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 86400
+          step: 60
+          unit_of_measurement: s
+          mode: box
+    min_runtime_deadline:
+      name: Deadline Mindestlaufzeit
+      description: Uhrzeit (HH:MM, lokale Zeit), bis zu der die Mindestlaufzeit erreicht sein muss, z. B. "19:00".
+      required: false
+      example: "19:00"
+      selector:
+        text:
 
 remove_device:
   name: Gerät entfernen

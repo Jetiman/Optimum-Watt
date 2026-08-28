@@ -57,10 +57,19 @@ class Device:
     off_delay_s: int = DEFAULT_OFF_DELAY_S
     mode: str = MODE_AUTO
 
+    # Daily minimum runtime guarantee ("Mindestlaufzeit"): if the device
+    # hasn't accumulated min_runtime_s of runtime today by the deadline,
+    # it gets forced on regardless of surplus so it still makes it.
+    min_runtime_s: int = 0
+    min_runtime_deadline: str | None = None  # local "HH:MM", e.g. "19:00"
+    runtime_today_s: float = 0.0
+    runtime_date: str | None = None  # ISO date the counter above applies to
+
     active: bool = False
     surplus_since: datetime | None = None
     deficit_since: datetime | None = None
     last_on_at: datetime | None = None
+    catchup_active: bool = False  # forced on right now to meet min_runtime_s
 
     @property
     def on_threshold_w(self) -> float:
@@ -77,6 +86,8 @@ class Device:
             return "manual_on"
         if self.mode == MODE_OFF:
             return "manual_off"
+        if self.catchup_active:
+            return "catchup"
         return "auto_on" if self.active else "auto_off"
 
     def to_storage(self) -> dict[str, Any]:
@@ -89,9 +100,13 @@ class Device:
             "on_delay_s": self.on_delay_s,
             "off_delay_s": self.off_delay_s,
             "mode": self.mode,
+            "min_runtime_s": self.min_runtime_s,
+            "min_runtime_deadline": self.min_runtime_deadline,
+            "runtime_today_s": self.runtime_today_s,
+            "runtime_date": self.runtime_date,
         }
 
-    def to_dict(self, remaining_seconds: int | None) -> dict[str, Any]:
+    def to_dict(self, remaining_seconds: int | None, runtime_today_s: float) -> dict[str, Any]:
         data = self.to_storage()
         data.update(
             {
@@ -100,6 +115,8 @@ class Device:
                 "on_threshold_w": self.on_threshold_w,
                 "off_threshold_w": self.off_threshold_w,
                 "remaining_seconds": remaining_seconds,
+                "runtime_today_s": runtime_today_s,
+                "catchup_active": self.catchup_active,
             }
         )
         return data
@@ -115,6 +132,10 @@ class Device:
             on_delay_s=data.get("on_delay_s", DEFAULT_ON_DELAY_S),
             off_delay_s=data.get("off_delay_s", DEFAULT_OFF_DELAY_S),
             mode=data.get("mode", MODE_AUTO),
+            min_runtime_s=data.get("min_runtime_s", 0),
+            min_runtime_deadline=data.get("min_runtime_deadline"),
+            runtime_today_s=data.get("runtime_today_s", 0.0),
+            runtime_date=data.get("runtime_date"),
         )
 
 
@@ -217,6 +238,8 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
         hysteresis_w: float | None = None,
         on_delay_s: int | None = None,
         off_delay_s: int | None = None,
+        min_runtime_s: int | None = None,
+        min_runtime_deadline: str | None = None,
     ) -> Device:
         device = Device(
             id=uuid.uuid4().hex[:8],
@@ -226,6 +249,8 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
             hysteresis_w=float(hysteresis_w) if hysteresis_w is not None else DEFAULT_HYSTERESIS_W,
             on_delay_s=int(on_delay_s) if on_delay_s is not None else DEFAULT_ON_DELAY_S,
             off_delay_s=int(off_delay_s) if off_delay_s is not None else DEFAULT_OFF_DELAY_S,
+            min_runtime_s=int(min_runtime_s) if min_runtime_s else 0,
+            min_runtime_deadline=min_runtime_deadline or None,
         )
         self.devices.append(device)
         await self._async_save_devices()
@@ -242,6 +267,8 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
             "on_delay_s",
             "off_delay_s",
             "mode",
+            "min_runtime_s",
+            "min_runtime_deadline",
         ):
             if key in fields and fields[key] is not None:
                 setattr(device, key, fields[key])
@@ -275,6 +302,7 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
 
     async def _evaluate(self) -> None:
         now = dt_util.utcnow()
+        now_local = dt_util.now()
 
         self._sync_active_from_states()
 
@@ -283,6 +311,10 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
 
         if not self.auto_mode:
             return
+
+        for device in self.devices:
+            self._roll_over_runtime(device, now_local)
+            await self._evaluate_min_runtime(device, now_local)
 
         power = self.current_power_w
         if power is None:
@@ -301,8 +333,11 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
             else:
                 candidate_on.surplus_since = None
 
-        # Turn OFF: the lowest-priority (last) active device in auto mode (LIFO).
-        active_auto_devices = [d for d in self.devices if d.mode == MODE_AUTO and d.active]
+        # Turn OFF: the lowest-priority (last) active device in auto mode (LIFO),
+        # skipping any device currently forced on to meet its daily minimum runtime.
+        active_auto_devices = [
+            d for d in self.devices if d.mode == MODE_AUTO and d.active and not d.catchup_active
+        ]
         if active_auto_devices:
             candidate_off = active_auto_devices[-1]
             if power < candidate_off.off_threshold_w:
@@ -315,10 +350,23 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
 
     def _sync_active_from_states(self) -> None:
         """Reconcile our tracked state with the real switch (restart, manual toggle)."""
+        now = dt_util.utcnow()
         for device in self.devices:
             live_state = self.hass.states.get(device.entity_id)
-            if live_state is not None and live_state.state in ("on", "off"):
-                device.active = live_state.state == "on"
+            if live_state is None or live_state.state not in ("on", "off"):
+                continue
+            was_active = device.active
+            device.active = live_state.state == "on"
+            if device.active and device.last_on_at is None:
+                # Restored from a restart, or turned on outside our own _turn_on.
+                device.last_on_at = now
+            if was_active and not device.active:
+                # Turned off externally (physical button, another automation) -
+                # still credit the runtime it accumulated before we noticed.
+                if device.last_on_at is not None:
+                    device.runtime_today_s += max((now - device.last_on_at).total_seconds(), 0)
+                device.last_on_at = None
+                device.catchup_active = False
 
     async def _sync_manual_mode(self, device: Device) -> None:
         """Force the relay to match a manual override, independent of surplus."""
@@ -326,6 +374,63 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
             await self._turn_on(device, dt_util.utcnow())
         elif device.mode == MODE_OFF and device.active:
             await self._turn_off(device)
+
+    def _roll_over_runtime(self, device: Device, now_local: datetime) -> None:
+        """Reset the daily runtime counter at the start of a new local day."""
+        today_str = now_local.date().isoformat()
+        if device.runtime_date != today_str:
+            device.runtime_date = today_str
+            device.runtime_today_s = 0.0
+            if device.active:
+                # Don't credit yesterday's running time to the new day.
+                device.last_on_at = dt_util.utcnow()
+
+    def _effective_runtime_today_s(self, device: Device) -> float:
+        """Today's accumulated runtime, including the currently running session."""
+        live_session = 0.0
+        if device.active and device.last_on_at is not None:
+            live_session = max((dt_util.utcnow() - device.last_on_at).total_seconds(), 0)
+        return device.runtime_today_s + live_session
+
+    @staticmethod
+    def _deadline_today(deadline_str: str, now_local: datetime) -> datetime | None:
+        try:
+            hour_str, minute_str = deadline_str.split(":", 1)
+            hour, minute = int(hour_str), int(minute_str)
+        except (ValueError, AttributeError):
+            return None
+        if not (0 <= hour <= 23 and 0 <= minute <= 59):
+            return None
+        return now_local.replace(hour=hour, minute=minute, second=0, microsecond=0)
+
+    async def _evaluate_min_runtime(self, device: Device, now_local: datetime) -> None:
+        """Force a device on if it's running out of time to meet its daily minimum."""
+        if device.mode != MODE_AUTO or device.min_runtime_s <= 0 or not device.min_runtime_deadline:
+            device.catchup_active = False
+            return
+
+        deadline_dt = self._deadline_today(device.min_runtime_deadline, now_local)
+        if deadline_dt is None or now_local >= deadline_dt:
+            device.catchup_active = False
+            return
+
+        remaining_needed = device.min_runtime_s - self._effective_runtime_today_s(device)
+        if remaining_needed <= 0:
+            device.catchup_active = False
+            return
+
+        time_left = (deadline_dt - now_local).total_seconds()
+        if time_left <= remaining_needed:
+            device.catchup_active = True
+            if not device.active:
+                _LOGGER.debug(
+                    "Wattix: forcing %s ON to meet daily minimum runtime before %s",
+                    device.entity_id,
+                    device.min_runtime_deadline,
+                )
+                await self._turn_on(device, dt_util.utcnow())
+        else:
+            device.catchup_active = False
 
     async def _turn_on(self, device: Device, now: datetime) -> None:
         device.active = True
@@ -338,9 +443,14 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
         )
 
     async def _turn_off(self, device: Device) -> None:
+        now = dt_util.utcnow()
+        if device.last_on_at is not None:
+            device.runtime_today_s += max((now - device.last_on_at).total_seconds(), 0)
         device.active = False
+        device.last_on_at = None
         device.surplus_since = None
         device.deficit_since = None
+        device.catchup_active = False
         _LOGGER.debug("Wattix: switching %s OFF", device.entity_id)
         await self.hass.services.async_call(
             "switch", "turn_off", {"entity_id": device.entity_id}, blocking=True
@@ -374,6 +484,7 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
             "surplus_w": self.current_power_w,
             "regulated_count": self.regulated_device_count,
             "devices": [
-                d.to_dict(self.device_seconds_remaining(d)) for d in self.devices
+                d.to_dict(self.device_seconds_remaining(d), self._effective_runtime_today_s(d))
+                for d in self.devices
             ],
         }

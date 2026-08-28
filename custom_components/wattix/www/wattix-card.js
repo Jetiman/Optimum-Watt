@@ -13,7 +13,14 @@ const STATUS_LABELS = {
   auto_on: "An (Automatik)",
   auto_off: "Aus (Automatik)",
   disabled: "Regelung aus",
+  catchup: "Pflichtlauf (Mindestlaufzeit)",
 };
+
+function fmtHours(seconds) {
+  if (seconds === null || seconds === undefined) return "–";
+  const h = seconds / 3600;
+  return (Math.round(h * 10) / 10).toString().replace(".", ",");
+}
 
 function fmtPower(watts) {
   if (watts === null || watts === undefined || Number.isNaN(watts)) return "–";
@@ -166,7 +173,16 @@ class WattixCard extends HTMLElement {
   _openAdd() {
     this._addingNew = true;
     this._editingId = null;
-    this._draft = { name: "", entity_id: "", power_w: "500", on_delay_min: "5", off_delay_min: "5", hysteresis_w: "100" };
+    this._draft = {
+      name: "",
+      entity_id: "",
+      power_w: "500",
+      on_delay_min: "5",
+      off_delay_min: "5",
+      hysteresis_w: "100",
+      min_runtime_hours: "",
+      min_runtime_deadline: "",
+    };
     this._renderDevicesWithForm();
   }
 
@@ -180,6 +196,8 @@ class WattixCard extends HTMLElement {
       on_delay_min: String(device.on_delay_s / 60),
       off_delay_min: String(device.off_delay_s / 60),
       hysteresis_w: String(device.hysteresis_w),
+      min_runtime_hours: device.min_runtime_s ? String(device.min_runtime_s / 3600) : "",
+      min_runtime_deadline: device.min_runtime_deadline || "",
     };
     this._renderDevicesWithForm();
   }
@@ -193,6 +211,8 @@ class WattixCard extends HTMLElement {
 
   _draftPayload() {
     const d = this._draft;
+    const hours = Number(d.min_runtime_hours);
+    const useMinRuntime = d.min_runtime_hours !== "" && hours > 0 && d.min_runtime_deadline;
     return {
       name: d.name.trim(),
       entity_id: d.entity_id.trim(),
@@ -200,10 +220,19 @@ class WattixCard extends HTMLElement {
       hysteresis_w: d.hysteresis_w === "" ? undefined : Number(d.hysteresis_w),
       on_delay_s: Math.round(Number(d.on_delay_min) * 60),
       off_delay_s: Math.round(Number(d.off_delay_min) * 60),
+      min_runtime_s: useMinRuntime ? Math.round(hours * 3600) : 0,
+      min_runtime_deadline: useMinRuntime ? d.min_runtime_deadline : "",
     };
   }
 
   _saveForm() {
+    const d = this._draft;
+    const hasHours = d.min_runtime_hours !== "" && Number(d.min_runtime_hours) > 0;
+    const hasDeadline = !!d.min_runtime_deadline;
+    if (hasHours !== hasDeadline) {
+      window.alert("Für die Mindestlaufzeit bitte sowohl Stunden als auch Uhrzeit angeben (oder beide leer lassen).");
+      return;
+    }
     const payload = this._draftPayload();
     if (!payload.name || !payload.entity_id || !Number.isFinite(payload.power_w)) {
       window.alert("Bitte Name, Schalter und Leistungsbedarf ausfüllen.");
@@ -242,6 +271,7 @@ class WattixCard extends HTMLElement {
       .em-device { border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; background: var(--secondary-background-color, #f2f2f2); display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
       .em-device.on { background: var(--success-color, #43a047); color: white; }
       .em-device.pending { background: var(--warning-color, #fb8c00); color: white; }
+      .em-device.catchup { background: var(--info-color, #3b6fd4); color: white; }
       .em-device.disabled { opacity: 0.55; }
       .em-device ha-icon { --mdc-icon-size: 24px; flex-shrink: 0; }
       .em-device-order { display: flex; flex-direction: column; gap: 2px; }
@@ -263,6 +293,7 @@ class WattixCard extends HTMLElement {
       .em-form-row input { border-radius: 6px; border: 1px solid var(--divider-color, #ccc); padding: 6px 8px; background: var(--card-background-color); color: var(--primary-text-color); }
       .em-form-advanced { margin-bottom: 10px; }
       .em-form-advanced summary { cursor: pointer; font-size: 0.85em; color: var(--secondary-text-color); }
+      .em-form-hint { font-size: 0.78em; color: var(--secondary-text-color); margin: -4px 0 4px; }
       .em-form-actions { display: flex; gap: 8px; justify-content: flex-end; }
       .em-btn-primary { background: var(--primary-color); color: var(--text-primary-color, white); border: none; border-radius: 6px; padding: 8px 14px; cursor: pointer; font-weight: 500; }
       .em-btn-secondary { background: transparent; color: var(--secondary-text-color); border: none; border-radius: 6px; padding: 8px 14px; cursor: pointer; }
@@ -374,6 +405,7 @@ class WattixCard extends HTMLElement {
     el.className = "em-device";
     const pending = device.remaining_seconds !== null && device.remaining_seconds !== undefined;
     if (device.mode === "disabled") el.classList.add("disabled");
+    else if (device.catchup_active) el.classList.add("catchup");
     else if (device.active) el.classList.add("on");
     else if (pending) el.classList.add("pending");
 
@@ -381,6 +413,9 @@ class WattixCard extends HTMLElement {
     const remainingText = fmtSeconds(device.remaining_seconds);
     if (remainingText) {
       sub += device.active ? ` · schaltet in ${remainingText} ab` : ` · schaltet in ${remainingText} ein`;
+    }
+    if (device.min_runtime_s) {
+      sub += ` · ${fmtHours(device.runtime_today_s)}/${fmtHours(device.min_runtime_s)}h bis ${device.min_runtime_deadline}`;
     }
 
     el.innerHTML = `
@@ -448,6 +483,17 @@ class WattixCard extends HTMLElement {
           <label>Hysterese (W) – Abstand zwischen Ein- und Ausschaltschwelle</label>
           <input type="number" id="em-f-hysteresis" value="${escapeHtml(d.hysteresis_w)}" min="0" step="10" />
         </div>
+        <div class="em-form-row two">
+          <div>
+            <label>Mindestlaufzeit pro Tag (h)</label>
+            <input type="number" id="em-f-min-runtime" value="${escapeHtml(d.min_runtime_hours)}" min="0" step="0.5" placeholder="leer = aus" />
+          </div>
+          <div>
+            <label>… bis Uhrzeit</label>
+            <input type="time" id="em-f-min-runtime-deadline" value="${escapeHtml(d.min_runtime_deadline)}" />
+          </div>
+        </div>
+        <p class="em-form-hint">Wird die Mindestlaufzeit sonst nicht erreicht, schaltet Wattix notfalls auch ohne Überschuss ein, rechtzeitig vor der Uhrzeit.</p>
       </details>
       <div class="em-form-actions">
         <button class="em-btn-secondary" id="em-f-cancel">Abbrechen</button>
@@ -460,6 +506,8 @@ class WattixCard extends HTMLElement {
     wrap.querySelector("#em-f-on-delay").addEventListener("input", (e) => (this._draft.on_delay_min = e.target.value));
     wrap.querySelector("#em-f-off-delay").addEventListener("input", (e) => (this._draft.off_delay_min = e.target.value));
     wrap.querySelector("#em-f-hysteresis").addEventListener("input", (e) => (this._draft.hysteresis_w = e.target.value));
+    wrap.querySelector("#em-f-min-runtime").addEventListener("input", (e) => (this._draft.min_runtime_hours = e.target.value));
+    wrap.querySelector("#em-f-min-runtime-deadline").addEventListener("input", (e) => (this._draft.min_runtime_deadline = e.target.value));
     wrap.querySelector("#em-f-save").addEventListener("click", () => this._saveForm());
     wrap.querySelector("#em-f-cancel").addEventListener("click", () => this._cancelForm());
 
