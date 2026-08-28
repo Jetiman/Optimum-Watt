@@ -225,6 +225,14 @@ class WattixCard extends HTMLElement {
       ha-card { padding: 16px; }
       .em-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
       .em-title { font-size: 1.1em; font-weight: 500; }
+      .em-logo { display: flex; align-items: flex-end; gap: 8px; }
+      .em-logo-bars { display: flex; align-items: flex-end; gap: 3px; height: 20px; }
+      .em-logo-bar { width: 5px; border-radius: 2px 2px 1px 1px; }
+      .em-logo-bar.b1 { height: 33%; background: #3C4550; }
+      .em-logo-bar.b2 { height: 52%; background: #B96A2C; }
+      .em-logo-bar.b3 { height: 72%; background: #D98A3D; }
+      .em-logo-bar.b4 { height: 100%; background: #F5A623; }
+      .em-logo-word { font-size: 1.15em; font-weight: 700; letter-spacing: -0.01em; color: var(--primary-text-color); }
       .em-header-right { display: flex; align-items: center; gap: 10px; }
       .em-active-count { color: var(--secondary-text-color); font-size: 0.9em; }
       .em-auto-toggle { cursor: pointer; }
@@ -260,10 +268,24 @@ class WattixCard extends HTMLElement {
       .em-btn-secondary { background: transparent; color: var(--secondary-text-color); border: none; border-radius: 6px; padding: 8px 14px; cursor: pointer; }
     `;
 
+    const titleHtml = this._config.title
+      ? `<div class="em-title">${escapeHtml(this._config.title)}</div>`
+      : `
+        <div class="em-logo" aria-label="Wattix">
+          <span class="em-logo-bars">
+            <span class="em-logo-bar b1"></span>
+            <span class="em-logo-bar b2"></span>
+            <span class="em-logo-bar b3"></span>
+            <span class="em-logo-bar b4"></span>
+          </span>
+          <span class="em-logo-word">Wattix</span>
+        </div>
+      `;
+
     const card = document.createElement("ha-card");
     card.innerHTML = `
       <div class="em-header">
-        <div class="em-title">${escapeHtml(this._config.title || "Wattix")}</div>
+        ${titleHtml}
         <div class="em-header-right">
           <span class="em-active-count" id="em-active-count"></span>
           <ha-icon class="em-auto-toggle" id="em-auto-icon"></ha-icon>
