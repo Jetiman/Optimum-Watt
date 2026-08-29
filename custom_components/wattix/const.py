@@ -16,10 +16,11 @@ DEFAULT_OFF_DELAY_S = 300
 
 UPDATE_INTERVAL = timedelta(seconds=10)
 
-# Minimum gap between two devices turning off in the same power dip, so a
-# sudden loss of surplus sheds load gradually instead of dropping everything
-# on the grid at once.
-CASCADE_OFF_STAGGER_S = 10
+# Minimum gap between two devices switching on, or two devices switching
+# off, in the same cascade step - so a sudden change in surplus (or enough
+# headroom for several devices at once) ramps load up/down gradually
+# instead of switching everything at the same instant.
+CASCADE_STAGGER_S = 10
 
 # Device mode
 MODE_AUTO = "auto"

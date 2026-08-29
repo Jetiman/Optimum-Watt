@@ -19,7 +19,11 @@ Nach der Einrichtung hinterlegst du nur einen Sensor, der die aktuelle
 - Beispiel: Gerät B braucht 200 W, Gerät A braucht 500 W. Sobald über
   200 W eingespeist werden, schaltet B ein. Bleibt der Überschuss weiter
   hoch genug (Gerät B zieht die 200 W ja bereits ab), schaltet danach A
-  ein, sobald zusätzlich 500 W Überschuss anstehen.
+  ein, sobald zusätzlich 500 W Überschuss anstehen. Reicht der Überschuss
+  von Anfang an für mehrere Geräte auf einmal (z. B. 3 kW Überschuss für
+  zwei Geräte mit je 1 kW), zählen deren Einschaltverzögerungen auch
+  gleichzeitig herunter statt nacheinander – die tatsächlichen
+  Einschaltvorgänge liegen trotzdem mindestens 10 Sekunden auseinander.
 - **Priorität** ergibt sich aus der Reihenfolge der Geräteliste (per
   Pfeiltasten verschiebbar): Das oberste Gerät schaltet zuerst ein und
   zuletzt wieder ab (LIFO – wie ein Wasserstand, der auf- und abfüllt).

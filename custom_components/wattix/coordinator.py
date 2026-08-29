@@ -23,7 +23,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 import homeassistant.util.dt as dt_util
 
 from .const import (
-    CASCADE_OFF_STAGGER_S,
+    CASCADE_STAGGER_S,
     CONF_GRID_POWER_ENTITY,
     CONF_INVERT,
     DEFAULT_HYSTERESIS_W,
@@ -164,6 +164,7 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
         self.auto_mode: bool = True
         self.current_power_w: float | None = None
         self.devices: list[Device] = []
+        self._last_cascade_on_at: datetime | None = None
         self._last_cascade_off_at: datetime | None = None
 
         self._store = Store[dict[str, Any]](hass, STORAGE_VERSION, _storage_key(entry.entry_id))
@@ -332,27 +333,34 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
         if power is None:
             return
 
-        # Turn ON: the highest-priority (first) inactive device in auto mode.
-        candidate_on = next(
-            (d for d in self.devices if d.mode == MODE_AUTO and not d.active), None
-        )
-        # Only the current candidate's timer may be running - any other device
-        # that previously was the candidate (before a reorder, or before the
-        # device ahead of it turned on) must have its stale timer cleared, or
-        # it keeps counting down in the background and fires the instant it
-        # becomes the candidate again, showing a stuck "0s" and skipping its
-        # own on-delay entirely.
+        # Turn ON: every inactive device in auto mode, in priority (list)
+        # order, that currently fits within the surplus together with the
+        # higher-priority devices already reserved ahead of it - not just
+        # the first one. A big-enough surplus lets several on-delay timers
+        # run at once instead of fully serializing through each device's
+        # on_delay_s one after another; the actual switch-on actions are
+        # still spaced at least CASCADE_STAGGER_S apart below so they don't
+        # all fire in the same instant. A device that no longer fits (or
+        # is no longer first in line) has its timer cleared here too, which
+        # also prevents the stale-timer bug where a device that once briefly
+        # qualified kept counting down in the background and fired instantly
+        # (stuck "0s") once it qualified again.
+        reserved_w = 0.0
         for d in self.devices:
-            if d is not candidate_on and d.mode == MODE_AUTO and not d.active:
-                d.surplus_since = None
-        if candidate_on is not None:
-            if power >= candidate_on.on_threshold_w:
-                if candidate_on.surplus_since is None:
-                    candidate_on.surplus_since = now
-                elif now - candidate_on.surplus_since >= timedelta(seconds=candidate_on.on_delay_s):
-                    await self._turn_on(candidate_on, now)
+            if d.mode != MODE_AUTO or d.active:
+                continue
+            if power - reserved_w >= d.on_threshold_w:
+                reserved_w += d.power_w
+                if d.surplus_since is None:
+                    d.surplus_since = now
+                elif now - d.surplus_since >= timedelta(seconds=d.on_delay_s) and (
+                    self._last_cascade_on_at is None
+                    or (now - self._last_cascade_on_at).total_seconds() >= CASCADE_STAGGER_S
+                ):
+                    await self._turn_on(d, now)
+                    self._last_cascade_on_at = now
             else:
-                candidate_on.surplus_since = None
+                d.surplus_since = None
 
         # Turn OFF: the lowest-priority (last) active device in auto mode (LIFO),
         # skipping any device currently forced on to meet its daily minimum
@@ -383,7 +391,7 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
                 ) and (
                     self._last_cascade_off_at is None
                     or (now - self._last_cascade_off_at).total_seconds()
-                    >= CASCADE_OFF_STAGGER_S
+                    >= CASCADE_STAGGER_S
                 ):
                     await self._turn_off(candidate_off)
                     self._last_cascade_off_at = now
