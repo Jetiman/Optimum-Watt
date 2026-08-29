@@ -29,7 +29,9 @@ Nach der Einrichtung hinterlegst du nur einen Sensor, der die aktuelle
   zuletzt wieder ab (LIFO – wie ein Wasserstand, der auf- und abfüllt).
   Fällt der Überschuss komplett weg, schaltet Wattix die aktiven Geräte
   nacheinander ab statt alle gleichzeitig – zwischen zwei Abschaltungen
-  liegen mindestens 10 Sekunden.
+  liegen mindestens 10 Sekunden. Reicht der verbleibende Überschuss von
+  vornherein für mehrere Geräte nicht mehr, zählen auch deren
+  Ausschaltverzögerungen gleichzeitig herunter statt nacheinander.
 - Pro Gerät stellst du ein, **wie lange** der Überschuss anstehen muss,
   bevor zugeschaltet wird (Einschaltverzögerung), und wie lange er
   **weg** sein muss, bevor wieder abgeschaltet wird (Ausschaltverzögerung)

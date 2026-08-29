@@ -362,41 +362,37 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
             else:
                 d.surplus_since = None
 
-        # Turn OFF: the lowest-priority (last) active device in auto mode (LIFO),
-        # skipping any device currently forced on to meet its daily minimum
-        # runtime, or that hasn't yet run for its minimum time per activation.
-        active_auto_devices = [
-            d
-            for d in self.devices
-            if d.mode == MODE_AUTO
-            and d.active
-            and not d.catchup_active
-            and self._min_on_duration_satisfied(d, now)
-        ]
-        candidate_off = active_auto_devices[-1] if active_auto_devices else None
-        # Same stale-timer issue as above: clear the deficit timer on every
-        # active device that isn't the current off-candidate, otherwise a
-        # device that briefly held the candidate slot earlier keeps an old
-        # timer running and turns off instantly (with no stagger) once it
-        # becomes the candidate again.
-        for d in self.devices:
-            if d is not candidate_off and d.mode == MODE_AUTO and d.active:
+        # Turn OFF: active devices in reverse priority order (LIFO - the
+        # lowest-priority, last-in-list device first), mirroring the ON
+        # cascade above. Every active device whose own threshold is still
+        # not covered by the surplus - even after hypothetically freeing up
+        # the power of the lower-priority devices already queued to turn
+        # off ahead of it - gets its own off-delay timer running
+        # concurrently, instead of waiting for each device to actually
+        # finish turning off before the next one's timer even starts. A
+        # device that's forced on for its daily minimum runtime, hasn't yet
+        # run its minimum time per activation, or no longer shows a deficit
+        # has its timer cleared here too (same stale-timer fix as the ON
+        # cascade).
+        freed_w = 0.0
+        for d in reversed(self.devices):
+            if d.mode != MODE_AUTO or not d.active:
+                continue
+            if d.catchup_active or not self._min_on_duration_satisfied(d, now):
                 d.deficit_since = None
-        if candidate_off is not None:
-            if power < candidate_off.off_threshold_w:
-                if candidate_off.deficit_since is None:
-                    candidate_off.deficit_since = now
-                elif now - candidate_off.deficit_since >= timedelta(
-                    seconds=candidate_off.off_delay_s
-                ) and (
+                continue
+            if power + freed_w < d.off_threshold_w:
+                freed_w += d.power_w
+                if d.deficit_since is None:
+                    d.deficit_since = now
+                elif now - d.deficit_since >= timedelta(seconds=d.off_delay_s) and (
                     self._last_cascade_off_at is None
-                    or (now - self._last_cascade_off_at).total_seconds()
-                    >= CASCADE_STAGGER_S
+                    or (now - self._last_cascade_off_at).total_seconds() >= CASCADE_STAGGER_S
                 ):
-                    await self._turn_off(candidate_off)
+                    await self._turn_off(d)
                     self._last_cascade_off_at = now
             else:
-                candidate_off.deficit_since = None
+                d.deficit_since = None
 
     def _sync_active_from_states(self) -> None:
         """Reconcile our tracked state with the real switch (restart, manual toggle)."""
