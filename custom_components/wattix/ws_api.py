@@ -17,8 +17,9 @@ from .const import DOMAIN, MODE_AUTO, MODE_DISABLED, MODE_OFF, MODE_ON
 from .coordinator import WattixCoordinator
 
 # Local "HH:MM" time of day, e.g. "19:00" - the deadline for a device's
-# daily minimum runtime.
-DEADLINE_SCHEMA = vol.Match(r"^([01]\d|2[0-3]):[0-5]\d$")
+# daily minimum runtime. The card always sends this field, using "" to mean
+# "no deadline / min-runtime disabled", so that must validate too.
+DEADLINE_SCHEMA = vol.Any(vol.Match(r"^([01]\d|2[0-3]):[0-5]\d$"), "")
 
 
 def _get_coordinator(

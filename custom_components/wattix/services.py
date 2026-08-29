@@ -28,7 +28,7 @@ ATTR_ENABLED = "enabled"
 ATTR_MIN_RUNTIME_S = "min_runtime_s"
 ATTR_MIN_RUNTIME_DEADLINE = "min_runtime_deadline"
 
-DEADLINE_SCHEMA = vol.Match(r"^([01]\d|2[0-3]):[0-5]\d$")
+DEADLINE_SCHEMA = vol.Any(vol.Match(r"^([01]\d|2[0-3]):[0-5]\d$"), "")
 
 ADD_DEVICE_SCHEMA = vol.Schema(
     {
