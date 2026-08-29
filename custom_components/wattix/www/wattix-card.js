@@ -281,7 +281,8 @@ class WattixCard extends HTMLElement {
       .em-device.catchup { background: var(--info-color, #3b6fd4); color: white; }
       .em-device.disabled { opacity: 0.55; }
       .em-device ha-icon { --mdc-icon-size: 24px; flex-shrink: 0; }
-      .em-device-order { display: flex; flex-direction: column; gap: 2px; }
+      .em-device-order { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+      .em-device-num { font-size: 0.72em; font-weight: 600; opacity: 0.75; line-height: 1; }
       .em-device-main { flex: 1 1 140px; min-width: 140px; }
       .em-device-name { font-weight: 500; overflow-wrap: break-word; word-break: break-word; }
       .em-device-sub { font-size: 0.82em; opacity: 0.85; overflow-wrap: break-word; word-break: break-word; }
@@ -436,6 +437,7 @@ class WattixCard extends HTMLElement {
     el.innerHTML = `
       <div class="em-device-order">
         <button class="em-icon-btn" data-action="up" ${idx === 0 ? "disabled" : ""} title="Höhere Priorität">▲</button>
+        <span class="em-device-num" title="Priorität">${idx + 1}</span>
         <button class="em-icon-btn" data-action="down" ${idx === total - 1 ? "disabled" : ""} title="Niedrigere Priorität">▼</button>
       </div>
       <ha-icon icon="mdi:power-socket-eu"></ha-icon>
