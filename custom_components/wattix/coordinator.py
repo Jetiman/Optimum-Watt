@@ -23,6 +23,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 import homeassistant.util.dt as dt_util
 
 from .const import (
+    CASCADE_OFF_STAGGER_S,
     CONF_GRID_POWER_ENTITY,
     CONF_INVERT,
     DEFAULT_HYSTERESIS_W,
@@ -163,6 +164,7 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
         self.auto_mode: bool = True
         self.current_power_w: float | None = None
         self.devices: list[Device] = []
+        self._last_cascade_off_at: datetime | None = None
 
         self._store = Store[dict[str, Any]](hass, STORAGE_VERSION, _storage_key(entry.entry_id))
         self._remove_power_listener = None
@@ -334,6 +336,15 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
         candidate_on = next(
             (d for d in self.devices if d.mode == MODE_AUTO and not d.active), None
         )
+        # Only the current candidate's timer may be running - any other device
+        # that previously was the candidate (before a reorder, or before the
+        # device ahead of it turned on) must have its stale timer cleared, or
+        # it keeps counting down in the background and fires the instant it
+        # becomes the candidate again, showing a stuck "0s" and skipping its
+        # own on-delay entirely.
+        for d in self.devices:
+            if d is not candidate_on and d.mode == MODE_AUTO and not d.active:
+                d.surplus_since = None
         if candidate_on is not None:
             if power >= candidate_on.on_threshold_w:
                 if candidate_on.surplus_since is None:
@@ -354,13 +365,28 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
             and not d.catchup_active
             and self._min_on_duration_satisfied(d, now)
         ]
-        if active_auto_devices:
-            candidate_off = active_auto_devices[-1]
+        candidate_off = active_auto_devices[-1] if active_auto_devices else None
+        # Same stale-timer issue as above: clear the deficit timer on every
+        # active device that isn't the current off-candidate, otherwise a
+        # device that briefly held the candidate slot earlier keeps an old
+        # timer running and turns off instantly (with no stagger) once it
+        # becomes the candidate again.
+        for d in self.devices:
+            if d is not candidate_off and d.mode == MODE_AUTO and d.active:
+                d.deficit_since = None
+        if candidate_off is not None:
             if power < candidate_off.off_threshold_w:
                 if candidate_off.deficit_since is None:
                     candidate_off.deficit_since = now
-                elif now - candidate_off.deficit_since >= timedelta(seconds=candidate_off.off_delay_s):
+                elif now - candidate_off.deficit_since >= timedelta(
+                    seconds=candidate_off.off_delay_s
+                ) and (
+                    self._last_cascade_off_at is None
+                    or (now - self._last_cascade_off_at).total_seconds()
+                    >= CASCADE_OFF_STAGGER_S
+                ):
                     await self._turn_off(candidate_off)
+                    self._last_cascade_off_at = now
             else:
                 candidate_off.deficit_since = None
 

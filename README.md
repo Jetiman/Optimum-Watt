@@ -23,6 +23,9 @@ Nach der Einrichtung hinterlegst du nur einen Sensor, der die aktuelle
 - **Priorität** ergibt sich aus der Reihenfolge der Geräteliste (per
   Pfeiltasten verschiebbar): Das oberste Gerät schaltet zuerst ein und
   zuletzt wieder ab (LIFO – wie ein Wasserstand, der auf- und abfüllt).
+  Fällt der Überschuss komplett weg, schaltet Wattix die aktiven Geräte
+  nacheinander ab statt alle gleichzeitig – zwischen zwei Abschaltungen
+  liegen mindestens 10 Sekunden.
 - Pro Gerät stellst du ein, **wie lange** der Überschuss anstehen muss,
   bevor zugeschaltet wird (Einschaltverzögerung), und wie lange er
   **weg** sein muss, bevor wieder abgeschaltet wird (Ausschaltverzögerung)

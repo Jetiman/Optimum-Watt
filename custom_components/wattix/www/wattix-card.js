@@ -596,23 +596,43 @@ class WattixPanel extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     if (!this._card) {
-      // Fill exactly the area Home Assistant already allocates for the panel
-      // (viewport minus its own toolbar) and scroll internally - a 100vh
-      // host pushes that toolbar (and its sidebar-toggle button) off-screen.
+      // A panel_custom element gets no automatic toolbar or sidebar-toggle
+      // from Home Assistant - those only exist on built-in panels that
+      // include their own <app-toolbar>. Without our own menu button here,
+      // there is no way to bring the sidebar back on a narrow/mobile screen
+      // once it's closed. Fill exactly the allocated area and scroll
+      // internally - a 100vh host pushes our own header off-screen too.
       this.style.display = "block";
       this.style.height = "100%";
       this.style.boxSizing = "border-box";
       this.style.overflow = "auto";
-      this.style.padding = "16px";
       this.style.background = "var(--primary-background-color)";
+
+      const header = document.createElement("div");
+      header.style.cssText =
+        "display:flex;align-items:center;gap:8px;padding:8px 12px;position:sticky;top:0;z-index:1;background:var(--app-header-background-color, var(--primary-background-color));";
+      const menuBtn = document.createElement("button");
+      menuBtn.setAttribute("aria-label", "Menü");
+      menuBtn.title = "Menü";
+      menuBtn.style.cssText =
+        "border:none;background:transparent;color:var(--primary-text-color);cursor:pointer;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;";
+      const menuIcon = document.createElement("ha-icon");
+      menuIcon.setAttribute("icon", "mdi:menu");
+      menuBtn.appendChild(menuIcon);
+      menuBtn.addEventListener("click", () => {
+        this.dispatchEvent(new CustomEvent("hass-toggle-menu", { bubbles: true, composed: true }));
+      });
+      header.appendChild(menuBtn);
 
       const wrap = document.createElement("div");
       wrap.style.maxWidth = "680px";
       wrap.style.margin = "0 auto";
+      wrap.style.padding = "0 16px 16px";
 
       this._card = document.createElement("wattix-card");
       this._card.setConfig({});
       wrap.appendChild(this._card);
+      this.appendChild(header);
       this.appendChild(wrap);
     }
     this._card.hass = hass;
