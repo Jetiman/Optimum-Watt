@@ -85,6 +85,14 @@ class Device:
     # bad reading can no longer wipe out an almost-complete delay.
     insufficient_since: datetime | None = None
     recovered_since: datetime | None = None
+    # Whether the raw surplus/deficit condition is met on the *current*
+    # tick - independent of whether a grace-protected timer above is still
+    # running. Used to keep the countdown shown to the user (and its
+    # "pending" styling) honest: a timer surviving a brief blip shouldn't
+    # be displayed as "switches in 0s" while the device very much isn't
+    # about to switch, because right now it doesn't qualify at all.
+    surplus_met: bool = False
+    deficit_met: bool = False
 
     @property
     def on_threshold_w(self) -> float:
@@ -364,6 +372,7 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
             if d.mode != MODE_AUTO or d.active:
                 continue
             met = power - reserved_w >= d.on_threshold_w
+            d.surplus_met = met
             qualifies, d.insufficient_since = self._debounced_still_qualifies(
                 now, met, d.surplus_since, d.insufficient_since
             )
@@ -401,8 +410,10 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
             if d.catchup_active or not self._min_on_duration_satisfied(d, now):
                 d.deficit_since = None
                 d.recovered_since = None
+                d.deficit_met = False
                 continue
             met = power + freed_w < d.off_threshold_w
+            d.deficit_met = met
             qualifies, d.recovered_since = self._debounced_still_qualifies(
                 now, met, d.deficit_since, d.recovered_since
             )
@@ -564,12 +575,19 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
         )
 
     def device_seconds_remaining(self, device: Device) -> int | None:
-        """Seconds left until this device's pending on/off action fires."""
+        """Seconds left until this device's pending on/off action fires.
+
+        Only shown while the underlying condition is actually met right
+        now - a timer kept alive through a brief reading blip (see
+        _debounced_still_qualifies) isn't about to fire, so it shouldn't
+        display a misleading "switches in 0s" countdown while power very
+        much doesn't support it.
+        """
         now = dt_util.utcnow()
-        if device.surplus_since is not None:
+        if device.surplus_since is not None and device.surplus_met:
             remaining = device.on_delay_s - (now - device.surplus_since).total_seconds()
             return max(int(remaining), 0)
-        if device.deficit_since is not None:
+        if device.deficit_since is not None and device.deficit_met:
             remaining = device.off_delay_s - (now - device.deficit_since).total_seconds()
             return max(int(remaining), 0)
         return None
