@@ -283,8 +283,8 @@ class WattixCard extends HTMLElement {
       .em-device ha-icon { --mdc-icon-size: 24px; flex-shrink: 0; }
       .em-device-order { display: flex; flex-direction: column; gap: 2px; }
       .em-device-main { flex: 1 1 140px; min-width: 140px; }
-      .em-device-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .em-device-sub { font-size: 0.82em; opacity: 0.85; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .em-device-name { font-weight: 500; overflow-wrap: break-word; word-break: break-word; }
+      .em-device-sub { font-size: 0.82em; opacity: 0.85; overflow-wrap: break-word; word-break: break-word; }
       .em-modes { display: flex; flex-wrap: wrap; gap: 4px; flex-shrink: 0; margin-left: auto; }
       .em-modes button { border: none; border-radius: 6px; padding: 4px 7px; font-size: 0.72em; cursor: pointer; background: rgba(0,0,0,0.12); color: inherit; white-space: nowrap; }
       .em-modes button.active { background: rgba(255,255,255,0.9); color: #222; font-weight: 600; }
@@ -293,11 +293,13 @@ class WattixCard extends HTMLElement {
       .em-add-btn { width: 100%; margin-top: 6px; padding: 10px; border-radius: 10px; border: 1px dashed var(--divider-color, #ccc); background: transparent; color: var(--primary-color); font-weight: 500; cursor: pointer; }
       .em-empty { color: var(--secondary-text-color); text-align: center; padding: 16px 0; }
       .em-form { border-radius: 10px; padding: 12px; margin-bottom: 8px; background: var(--card-background-color); border: 1px solid var(--divider-color, #ddd); }
-      .em-form-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
-      .em-form-row.two { flex-direction: row; gap: 10px; }
-      .em-form-row.two > div { flex: 1; display: flex; flex-direction: column; gap: 4px; }
-      .em-form-row label { font-size: 0.8em; color: var(--secondary-text-color); }
-      .em-form-row input { border-radius: 6px; border: 1px solid var(--divider-color, #ccc); padding: 6px 8px; background: var(--card-background-color); color: var(--primary-text-color); }
+      .em-form-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; min-width: 0; }
+      .em-form-row.two { flex-direction: row; gap: 10px; flex-wrap: wrap; }
+      .em-form-row.two > div { flex: 1 1 140px; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+      .em-form-row label { font-size: 0.8em; color: var(--secondary-text-color); overflow-wrap: break-word; }
+      .em-form-row input { border-radius: 6px; border: 1px solid var(--divider-color, #ccc); padding: 6px 8px; background: var(--card-background-color); color: var(--primary-text-color); width: 100%; box-sizing: border-box; min-width: 0; }
+      .em-form { min-width: 0; }
+      #em-f-entity-wrap, #em-f-entity-wrap ha-entity-picker { width: 100%; box-sizing: border-box; }
       .em-form-advanced { margin-bottom: 10px; }
       .em-form-advanced summary { cursor: pointer; font-size: 0.85em; color: var(--secondary-text-color); }
       .em-form-hint { font-size: 0.78em; color: var(--secondary-text-color); margin: -4px 0 4px; }
