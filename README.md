@@ -40,6 +40,10 @@ Nach der Einrichtung hinterlegst du nur einen Sensor, der die aktuelle
   gelaufen, schaltet sie spätestens um 17:30 zwangsweise ein, damit die
   restlichen 1,5 h bis 19:00 noch reinpassen. Der Zähler setzt sich um
   Mitternacht zurück; die Karte zeigt den Fortschritt an der Geräte-Zeile.
+- Optional (unter „Erweitert") eine **Mindestlaufzeit pro Aktivierung**:
+  Ist ein Gerät einmal eingeschaltet, bleibt es mindestens diese Zeit an –
+  auch wenn der Überschuss vorher wegfällt. Nützlich für Geräte, die nicht
+  ständig kurz an- und wieder ausgeschaltet werden sollen (z. B. eine Pumpe).
 
 Alle Änderungen (Gerät hinzufügen/bearbeiten/löschen/verschieben) wirken
 sofort – kein Neustart, kein YAML.

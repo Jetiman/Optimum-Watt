@@ -65,6 +65,11 @@ class Device:
     runtime_today_s: float = 0.0
     runtime_date: str | None = None  # ISO date the counter above applies to
 
+    # Minimum runtime per activation ("Mindestlaufzeit pro Aktivierung"):
+    # once switched on, the device stays on for at least this long even if
+    # the surplus disappears again right away.
+    min_on_duration_s: int = 0
+
     active: bool = False
     surplus_since: datetime | None = None
     deficit_since: datetime | None = None
@@ -104,6 +109,7 @@ class Device:
             "min_runtime_deadline": self.min_runtime_deadline,
             "runtime_today_s": self.runtime_today_s,
             "runtime_date": self.runtime_date,
+            "min_on_duration_s": self.min_on_duration_s,
         }
 
     def to_dict(self, remaining_seconds: int | None, runtime_today_s: float) -> dict[str, Any]:
@@ -136,6 +142,7 @@ class Device:
             min_runtime_deadline=data.get("min_runtime_deadline"),
             runtime_today_s=data.get("runtime_today_s", 0.0),
             runtime_date=data.get("runtime_date"),
+            min_on_duration_s=data.get("min_on_duration_s", 0),
         )
 
 
@@ -240,6 +247,7 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
         off_delay_s: int | None = None,
         min_runtime_s: int | None = None,
         min_runtime_deadline: str | None = None,
+        min_on_duration_s: int | None = None,
     ) -> Device:
         device = Device(
             id=uuid.uuid4().hex[:8],
@@ -251,6 +259,7 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
             off_delay_s=int(off_delay_s) if off_delay_s is not None else DEFAULT_OFF_DELAY_S,
             min_runtime_s=int(min_runtime_s) if min_runtime_s else 0,
             min_runtime_deadline=min_runtime_deadline or None,
+            min_on_duration_s=int(min_on_duration_s) if min_on_duration_s else 0,
         )
         self.devices.append(device)
         await self._async_save_devices()
@@ -269,6 +278,7 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
             "mode",
             "min_runtime_s",
             "min_runtime_deadline",
+            "min_on_duration_s",
         ):
             if key in fields and fields[key] is not None:
                 setattr(device, key, fields[key])
@@ -334,9 +344,15 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
                 candidate_on.surplus_since = None
 
         # Turn OFF: the lowest-priority (last) active device in auto mode (LIFO),
-        # skipping any device currently forced on to meet its daily minimum runtime.
+        # skipping any device currently forced on to meet its daily minimum
+        # runtime, or that hasn't yet run for its minimum time per activation.
         active_auto_devices = [
-            d for d in self.devices if d.mode == MODE_AUTO and d.active and not d.catchup_active
+            d
+            for d in self.devices
+            if d.mode == MODE_AUTO
+            and d.active
+            and not d.catchup_active
+            and self._min_on_duration_satisfied(d, now)
         ]
         if active_auto_devices:
             candidate_off = active_auto_devices[-1]
@@ -391,6 +407,13 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
         if device.active and device.last_on_at is not None:
             live_session = max((dt_util.utcnow() - device.last_on_at).total_seconds(), 0)
         return device.runtime_today_s + live_session
+
+    @staticmethod
+    def _min_on_duration_satisfied(device: Device, now: datetime) -> bool:
+        """Whether the device has been on long enough to be allowed off again."""
+        if device.min_on_duration_s <= 0 or device.last_on_at is None:
+            return True
+        return (now - device.last_on_at).total_seconds() >= device.min_on_duration_s
 
     @staticmethod
     def _deadline_today(deadline_str: str, now_local: datetime) -> datetime | None:

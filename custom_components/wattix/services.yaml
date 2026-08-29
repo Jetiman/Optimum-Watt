@@ -86,6 +86,17 @@ add_device:
       example: "19:00"
       selector:
         text:
+    min_on_duration_s:
+      name: Mindestlaufzeit pro Aktivierung
+      description: Sekunden, die das Gerät nach jedem Einschalten mindestens durchläuft, auch wenn der Überschuss vorher wegfällt.
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 86400
+          step: 60
+          unit_of_measurement: s
+          mode: box
 
 remove_device:
   name: Gerät entfernen
