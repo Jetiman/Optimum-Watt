@@ -35,7 +35,10 @@ Nach der Einrichtung hinterlegst du nur einen Sensor, der die aktuelle
 - Pro Gerät stellst du ein, **wie lange** der Überschuss anstehen muss,
   bevor zugeschaltet wird (Einschaltverzögerung), und wie lange er
   **weg** sein muss, bevor wieder abgeschaltet wird (Ausschaltverzögerung)
-  – Standard jeweils 5 Minuten.
+  – Standard jeweils 5 Minuten. Ein einzelner kurzer Ausreißer (z. B. ein
+  Speicher/Akku, der beim Nachregeln kurz ins Plus pendelt) unterbricht
+  eine schon laufende Verzögerung nicht sofort – erst wenn der Ausreißer
+  30 Sekunden anhält, zählt er als echte Änderung.
 - Eine Hysterese (Standard 100 W, unter „Erweitert") verhindert, dass ein
   Gerät bei schwankendem Überschuss knapp an der Schwelle flattert.
 - Jedes Gerät lässt sich jederzeit manuell auf **An** oder **Aus**

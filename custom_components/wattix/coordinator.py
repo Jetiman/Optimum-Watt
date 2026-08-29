@@ -34,6 +34,7 @@ from .const import (
     MODE_DISABLED,
     MODE_OFF,
     MODE_ON,
+    RESET_GRACE_S,
     STORAGE_VERSION,
     UPDATE_INTERVAL,
 )
@@ -76,6 +77,14 @@ class Device:
     deficit_since: datetime | None = None
     last_on_at: datetime | None = None
     catchup_active: bool = False  # forced on right now to meet min_runtime_s
+
+    # How long a running on/off timer has currently seen the *opposite*
+    # condition (e.g. a battery/storage regulation blip briefly pushing the
+    # surplus reading the wrong way). Only once this persists for
+    # RESET_GRACE_S does the timer above actually get cleared - a single
+    # bad reading can no longer wipe out an almost-complete delay.
+    insufficient_since: datetime | None = None
+    recovered_since: datetime | None = None
 
     @property
     def on_threshold_w(self) -> float:
@@ -289,6 +298,8 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
             # Avoid a stale timer instantly firing if the device returns to auto later.
             device.surplus_since = None
             device.deficit_since = None
+            device.insufficient_since = None
+            device.recovered_since = None
         await self._async_save_devices()
         self._notify_and_reeval()
         return device
@@ -344,23 +355,30 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
         # is no longer first in line) has its timer cleared here too, which
         # also prevents the stale-timer bug where a device that once briefly
         # qualified kept counting down in the background and fired instantly
-        # (stuck "0s") once it qualified again.
+        # (stuck "0s") once it qualified again. A running timer survives a
+        # brief dip below threshold via _debounced_still_qualifies (see
+        # there) so a single noisy reading can't wipe out an almost-complete
+        # wait.
         reserved_w = 0.0
         for d in self.devices:
             if d.mode != MODE_AUTO or d.active:
                 continue
-            if power - reserved_w >= d.on_threshold_w:
-                reserved_w += d.power_w
-                if d.surplus_since is None:
-                    d.surplus_since = now
-                elif now - d.surplus_since >= timedelta(seconds=d.on_delay_s) and (
-                    self._last_cascade_on_at is None
-                    or (now - self._last_cascade_on_at).total_seconds() >= CASCADE_STAGGER_S
-                ):
-                    await self._turn_on(d, now)
-                    self._last_cascade_on_at = now
-            else:
+            met = power - reserved_w >= d.on_threshold_w
+            qualifies, d.insufficient_since = self._debounced_still_qualifies(
+                now, met, d.surplus_since, d.insufficient_since
+            )
+            if not qualifies:
                 d.surplus_since = None
+                continue
+            reserved_w += d.power_w
+            if d.surplus_since is None:
+                d.surplus_since = now
+            elif met and now - d.surplus_since >= timedelta(seconds=d.on_delay_s) and (
+                self._last_cascade_on_at is None
+                or (now - self._last_cascade_on_at).total_seconds() >= CASCADE_STAGGER_S
+            ):
+                await self._turn_on(d, now)
+                self._last_cascade_on_at = now
 
         # Turn OFF: active devices in reverse priority order (LIFO - the
         # lowest-priority, last-in-list device first), mirroring the ON
@@ -370,29 +388,36 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
         # off ahead of it - gets its own off-delay timer running
         # concurrently, instead of waiting for each device to actually
         # finish turning off before the next one's timer even starts. A
-        # device that's forced on for its daily minimum runtime, hasn't yet
-        # run its minimum time per activation, or no longer shows a deficit
-        # has its timer cleared here too (same stale-timer fix as the ON
-        # cascade).
+        # device that's forced on for its daily minimum runtime, or hasn't
+        # yet run its minimum time per activation, has its timer cleared
+        # here too. A running timer survives a brief spike back above
+        # threshold the same way the ON cascade does - e.g. a battery or
+        # storage system regulating and briefly overshooting into positive
+        # surplus shouldn't cancel an almost-complete off-delay wait.
         freed_w = 0.0
         for d in reversed(self.devices):
             if d.mode != MODE_AUTO or not d.active:
                 continue
             if d.catchup_active or not self._min_on_duration_satisfied(d, now):
                 d.deficit_since = None
+                d.recovered_since = None
                 continue
-            if power + freed_w < d.off_threshold_w:
-                freed_w += d.power_w
-                if d.deficit_since is None:
-                    d.deficit_since = now
-                elif now - d.deficit_since >= timedelta(seconds=d.off_delay_s) and (
-                    self._last_cascade_off_at is None
-                    or (now - self._last_cascade_off_at).total_seconds() >= CASCADE_STAGGER_S
-                ):
-                    await self._turn_off(d)
-                    self._last_cascade_off_at = now
-            else:
+            met = power + freed_w < d.off_threshold_w
+            qualifies, d.recovered_since = self._debounced_still_qualifies(
+                now, met, d.deficit_since, d.recovered_since
+            )
+            if not qualifies:
                 d.deficit_since = None
+                continue
+            freed_w += d.power_w
+            if d.deficit_since is None:
+                d.deficit_since = now
+            elif met and now - d.deficit_since >= timedelta(seconds=d.off_delay_s) and (
+                self._last_cascade_off_at is None
+                or (now - self._last_cascade_off_at).total_seconds() >= CASCADE_STAGGER_S
+            ):
+                await self._turn_off(d)
+                self._last_cascade_off_at = now
 
     def _sync_active_from_states(self) -> None:
         """Reconcile our tracked state with the real switch (restart, manual toggle)."""
@@ -446,6 +471,31 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
         return (now - device.last_on_at).total_seconds() >= device.min_on_duration_s
 
     @staticmethod
+    def _debounced_still_qualifies(
+        now: datetime, met: bool, timer_since: datetime | None, break_since: datetime | None
+    ) -> tuple[bool, datetime | None]:
+        """Whether a device with a running on/off-delay timer still qualifies.
+
+        A running timer (`timer_since` set) survives a brief interruption of
+        `met` - e.g. a battery/storage regulation blip briefly pushing the
+        surplus reading the wrong way - instead of being wiped by a single
+        bad reading. Only once the interruption has lasted at least
+        RESET_GRACE_S does it count as a real, sustained change and the
+        timer actually gets cleared. Returns (still_qualifies, updated
+        break_since) - the caller is expected to store break_since back
+        onto the device.
+        """
+        if met:
+            return True, None
+        if timer_since is None:
+            return False, None
+        if break_since is None:
+            break_since = now
+        if (now - break_since).total_seconds() >= RESET_GRACE_S:
+            return False, None
+        return True, break_since
+
+    @staticmethod
     def _deadline_today(deadline_str: str, now_local: datetime) -> datetime | None:
         try:
             hour_str, minute_str = deadline_str.split(":", 1)
@@ -489,6 +539,8 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
         device.active = True
         device.surplus_since = None
         device.deficit_since = None
+        device.insufficient_since = None
+        device.recovered_since = None
         device.last_on_at = now
         _LOGGER.debug("Wattix: switching %s ON", device.entity_id)
         await self.hass.services.async_call(
@@ -503,6 +555,8 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
         device.last_on_at = None
         device.surplus_since = None
         device.deficit_since = None
+        device.insufficient_since = None
+        device.recovered_since = None
         device.catchup_active = False
         _LOGGER.debug("Wattix: switching %s OFF", device.entity_id)
         await self.hass.services.async_call(

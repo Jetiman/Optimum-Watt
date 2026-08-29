@@ -22,6 +22,12 @@ UPDATE_INTERVAL = timedelta(seconds=10)
 # instead of switching everything at the same instant.
 CASCADE_STAGGER_S = 10
 
+# How long the opposite condition must persist before an on/off delay timer
+# actually gets reset, so a brief reading blip (e.g. a battery/storage
+# regulating and briefly overshooting the threshold) doesn't wipe out an
+# almost-complete wait.
+RESET_GRACE_S = 30
+
 # Device mode
 MODE_AUTO = "auto"
 MODE_ON = "on"
