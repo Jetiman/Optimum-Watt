@@ -118,6 +118,11 @@ Die Karte zeigt:
 - einen „+ Gerät hinzufügen"-Button mit Formular (Name, Schalter,
   Leistungsbedarf, Verzögerungen, erweitert: Hysterese).
 
+<p align="center">
+  <img src="assets/screenshot-list.jpg" width="360" alt="Wattix Geräteliste">
+  <img src="assets/screenshot-form.jpg" width="360" alt="Wattix Gerät bearbeiten">
+</p>
+
 ## Erzeugte Entitäten
 
 Pro Instanz wird ein Gerät „Wattix" mit zwei zusätzlichen
