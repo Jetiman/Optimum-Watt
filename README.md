@@ -60,7 +60,8 @@ Nach der Einrichtung hinterlegst du nur einen Sensor, der die aktuelle
   einem **Sensor-Timeout** (Minuten, leer = aus): Kommt vom Einspeise-Sensor
   so lange kein neuer Wert (z. B. weil er ausgefallen ist), schaltet Wattix
   sicherheitshalber alle aktiven Geräte (außer „Regelung aus") nacheinander
-  im 10-Sekunden-Takt ab – unabhängig vom Automatik-Schalter.
+  im 10-Sekunden-Takt ab – unabhängig vom Automatik-Schalter. Solange das
+  der Fall ist, zeigt die Karte oben eine rote Meldung an.
 
 Alle Änderungen (Gerät hinzufügen/bearbeiten/löschen/verschieben) wirken
 sofort – kein Neustart, kein YAML.

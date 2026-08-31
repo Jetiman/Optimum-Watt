@@ -273,6 +273,8 @@ class WattixCard extends HTMLElement {
       .em-surplus { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
       .em-surplus .value { font-size: 2em; font-weight: 600; }
       .em-surplus .label { color: var(--secondary-text-color); font-size: 0.9em; }
+      .em-alert { display: flex; align-items: flex-start; gap: 8px; background: var(--error-color, #d32f2f); color: white; padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; font-size: 0.85em; font-weight: 500; }
+      .em-alert ha-icon { --mdc-icon-size: 20px; flex-shrink: 0; }
       .em-legend { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 4px 10px; margin: 0 0 14px; }
       .em-legend-item { display: flex; align-items: center; gap: 4px; font-size: 0.72em; color: var(--secondary-text-color); white-space: nowrap; }
       .em-legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
@@ -343,6 +345,10 @@ class WattixCard extends HTMLElement {
         <div class="value" id="em-surplus-value">–</div>
         <div class="label">Überschuss aktuell</div>
       </div>
+      <div class="em-alert" id="em-alert" hidden>
+        <ha-icon icon="mdi:alert"></ha-icon>
+        <span id="em-alert-text"></span>
+      </div>
       <div class="em-legend">
         <span class="em-legend-item"><span class="em-legend-dot on"></span>An</span>
         <span class="em-legend-item"><span class="em-legend-dot pending"></span>Wartet</span>
@@ -381,6 +387,8 @@ class WattixCard extends HTMLElement {
       activeCount: card.querySelector("#em-active-count"),
       devices: card.querySelector("#em-devices"),
       addBtn: card.querySelector("#em-add-btn"),
+      alert: card.querySelector("#em-alert"),
+      alertText: card.querySelector("#em-alert-text"),
       settingsTimeout: card.querySelector("#em-settings-timeout"),
       settingsSave: card.querySelector("#em-settings-save"),
     };
@@ -410,6 +418,13 @@ class WattixCard extends HTMLElement {
     this._els.autoIcon.style.color = state.auto_mode
       ? "var(--success-color, #43a047)"
       : "var(--disabled-text-color, #9e9e9e)";
+
+    this._els.alert.hidden = !state.sensor_stale;
+    if (state.sensor_stale) {
+      this._els.alertText.textContent =
+        `Kein neuer Wert vom Einspeise-Sensor seit über ${fmtMinutes(state.sensor_timeout_s)} min – ` +
+        "aktive Geräte werden sicherheitshalber nacheinander abgeschaltet.";
+    }
 
     // Don't stomp on the field while the user is actively editing it.
     if (document.activeElement !== this._els.settingsTimeout) {

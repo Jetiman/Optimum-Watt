@@ -666,6 +666,7 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
             "surplus_w": self.current_power_w,
             "regulated_count": self.regulated_device_count,
             "sensor_timeout_s": self.sensor_timeout_s,
+            "sensor_stale": self._is_sensor_stale(dt_util.utcnow()),
             "devices": [
                 d.to_dict(self.device_seconds_remaining(d), self._effective_runtime_today_s(d))
                 for d in self.devices
