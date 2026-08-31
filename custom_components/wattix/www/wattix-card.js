@@ -274,6 +274,7 @@ class WattixCard extends HTMLElement {
       .em-surplus .value { font-size: 2em; font-weight: 600; }
       .em-surplus .label { color: var(--secondary-text-color); font-size: 0.9em; }
       .em-alert { display: flex; align-items: flex-start; gap: 8px; background: var(--error-color, #d32f2f); color: white; padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; font-size: 0.85em; font-weight: 500; }
+      .em-alert[hidden] { display: none; }
       .em-alert ha-icon { --mdc-icon-size: 20px; flex-shrink: 0; }
       .em-legend { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 4px 10px; margin: 0 0 14px; }
       .em-legend-item { display: flex; align-items: center; gap: 4px; font-size: 0.72em; color: var(--secondary-text-color); white-space: nowrap; }
@@ -441,11 +442,10 @@ class WattixCard extends HTMLElement {
       : "var(--disabled-text-color, #9e9e9e)";
 
     this._els.alert.hidden = !state.sensor_stale;
-    if (state.sensor_stale) {
-      this._els.alertText.textContent =
-        `Kein neuer Wert vom Einspeise-Sensor seit über ${fmtMinutes(state.sensor_timeout_s)} min – ` +
-        "aktive Geräte werden sicherheitshalber nacheinander abgeschaltet.";
-    }
+    this._els.alertText.textContent = state.sensor_stale
+      ? `Kein neuer Wert vom Einspeise-Sensor seit über ${fmtMinutes(state.sensor_timeout_s)} min – ` +
+        "aktive Geräte werden sicherheitshalber nacheinander abgeschaltet."
+      : "";
 
     // Don't stomp on the field while the user is actively editing it.
     if (document.activeElement !== this._els.settingsTimeout) {

@@ -1,6 +1,7 @@
 """The Wattix integration."""
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 
 from homeassistant.config_entries import ConfigEntry
@@ -55,10 +56,20 @@ async def _async_register_frontend(hass: HomeAssistant) -> None:
         return
 
     www_dir = Path(__file__).parent / "www"
+    card_path = www_dir / CARD_FILENAME
     await hass.http.async_register_static_paths(
-        [StaticPathConfig(f"{CARD_URL_BASE}/{CARD_FILENAME}", str(www_dir / CARD_FILENAME), False)]
+        [StaticPathConfig(f"{CARD_URL_BASE}/{CARD_FILENAME}", str(card_path), False)]
     )
-    add_extra_js_url(hass, f"{CARD_URL_BASE}/{CARD_FILENAME}")
+
+    # Cache-bust on the actual file content, not just the manifest version -
+    # otherwise browsers and the mobile app's WebView keep serving a stale
+    # cached copy of the card after an update until the user manually clears
+    # their cache, since the URL never changes on its own.
+    card_bytes = await hass.async_add_executor_job(card_path.read_bytes)
+    cache_bust = hashlib.sha256(card_bytes).hexdigest()[:10]
+    card_url = f"{CARD_URL_BASE}/{CARD_FILENAME}?v={cache_bust}"
+
+    add_extra_js_url(hass, card_url)
 
     await async_register_panel(
         hass,
@@ -66,7 +77,7 @@ async def _async_register_frontend(hass: HomeAssistant) -> None:
         webcomponent_name="wattix-panel",
         sidebar_title="Wattix",
         sidebar_icon="mdi:flash",
-        module_url=f"{CARD_URL_BASE}/{CARD_FILENAME}",
+        module_url=card_url,
         embed_iframe=False,
         require_admin=False,
     )
