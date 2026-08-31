@@ -182,6 +182,25 @@ async def ws_set_auto_mode(hass, connection, msg):
 
 @websocket_api.websocket_command(
     {
+        vol.Required("type"): "wattix/set_settings",
+        vol.Required("entry_id"): str,
+        vol.Optional("sensor_timeout_s"): vol.Coerce(int),
+    }
+)
+@websocket_api.require_admin
+@websocket_api.async_response
+async def ws_set_settings(hass, connection, msg):
+    coordinator = _get_coordinator(hass, msg["entry_id"])
+    if coordinator is None:
+        connection.send_error(msg["id"], "not_found", "Unbekannte entry_id")
+        return
+    if "sensor_timeout_s" in msg:
+        await coordinator.async_set_sensor_timeout(msg["sensor_timeout_s"])
+    connection.send_result(msg["id"], coordinator.state_dict())
+
+
+@websocket_api.websocket_command(
+    {
         vol.Required("type"): "wattix/subscribe",
         vol.Required("entry_id"): str,
     }
@@ -213,4 +232,5 @@ def async_register_websocket_commands(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_remove_device)
     websocket_api.async_register_command(hass, ws_reorder_devices)
     websocket_api.async_register_command(hass, ws_set_auto_mode)
+    websocket_api.async_register_command(hass, ws_set_settings)
     websocket_api.async_register_command(hass, ws_subscribe)

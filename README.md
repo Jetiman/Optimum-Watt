@@ -56,6 +56,11 @@ Nach der Einrichtung hinterlegst du nur einen Sensor, der die aktuelle
   Ist ein Gerät einmal eingeschaltet, bleibt es mindestens diese Zeit an –
   auch wenn der Überschuss vorher wegfällt. Nützlich für Geräte, die nicht
   ständig kurz an- und wieder ausgeschaltet werden sollen (z. B. eine Pumpe).
+- Unten in der Karte gibt es ein ausklappbares **Einstellungen**-Feld mit
+  einem **Sensor-Timeout** (Minuten, leer = aus): Kommt vom Einspeise-Sensor
+  so lange kein neuer Wert (z. B. weil er ausgefallen ist), schaltet Wattix
+  sicherheitshalber alle aktiven Geräte (außer „Regelung aus") nacheinander
+  im 10-Sekunden-Takt ab – unabhängig vom Automatik-Schalter.
 
 Alle Änderungen (Gerät hinzufügen/bearbeiten/löschen/verschieben) wirken
 sofort – kein Neustart, kein YAML.

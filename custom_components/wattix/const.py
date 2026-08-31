@@ -28,6 +28,12 @@ CASCADE_STAGGER_S = 10
 # almost-complete wait.
 RESET_GRACE_S = 30
 
+# Default instance-level setting: 0 = disabled (opt-in). If > 0, all
+# switches get shut down (staggered by CASCADE_STAGGER_S) once the grid
+# power sensor hasn't reported a fresh value for this many seconds - a
+# safety fallback for a stuck/dead sensor.
+DEFAULT_SENSOR_TIMEOUT_S = 0
+
 # Device mode
 MODE_AUTO = "auto"
 MODE_ON = "on"

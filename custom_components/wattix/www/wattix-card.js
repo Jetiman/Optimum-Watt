@@ -312,6 +312,8 @@ class WattixCard extends HTMLElement {
       .em-form-actions { display: flex; gap: 8px; justify-content: flex-end; }
       .em-btn-primary { background: var(--primary-color); color: var(--text-primary-color, white); border: none; border-radius: 6px; padding: 8px 14px; cursor: pointer; font-weight: 500; }
       .em-btn-secondary { background: transparent; color: var(--secondary-text-color); border: none; border-radius: 6px; padding: 8px 14px; cursor: pointer; }
+      .em-settings { margin-top: 14px; border-top: 1px solid var(--divider-color, #ddd); padding-top: 10px; }
+      .em-settings summary { cursor: pointer; font-weight: 500; color: var(--primary-text-color); }
     `;
 
     const titleHtml = this._config.title
@@ -349,6 +351,21 @@ class WattixCard extends HTMLElement {
       </div>
       <div id="em-devices"></div>
       <button class="em-add-btn" id="em-add-btn">+ Gerät hinzufügen</button>
+      <details class="em-settings" id="em-settings">
+        <summary>Einstellungen</summary>
+        <div class="em-form-row" style="margin-top: 8px;">
+          <label>Sensor-Timeout (min)</label>
+          <input type="number" id="em-settings-timeout" min="0" step="1" placeholder="leer = aus" />
+        </div>
+        <p class="em-form-hint">
+          Kommt vom Einspeise-Sensor so lange kein neuer Wert, werden alle aktiven
+          Schalter (außer „Regelung aus") sicherheitshalber nacheinander im
+          10-Sekunden-Takt abgeschaltet.
+        </p>
+        <div class="em-form-actions">
+          <button class="em-btn-primary" id="em-settings-save">Speichern</button>
+        </div>
+      </details>
     `;
 
     this._root = document.createElement("div");
@@ -364,10 +381,20 @@ class WattixCard extends HTMLElement {
       activeCount: card.querySelector("#em-active-count"),
       devices: card.querySelector("#em-devices"),
       addBtn: card.querySelector("#em-add-btn"),
+      settingsTimeout: card.querySelector("#em-settings-timeout"),
+      settingsSave: card.querySelector("#em-settings-save"),
     };
 
     this._els.autoIcon.addEventListener("click", () => this._toggleAuto());
     this._els.addBtn.addEventListener("click", () => this._openAdd());
+    this._els.settingsSave.addEventListener("click", () => this._saveSettings());
+  }
+
+  _saveSettings() {
+    const raw = this._els.settingsTimeout.value;
+    const minutes = Number(raw);
+    const sensor_timeout_s = raw !== "" && minutes > 0 ? Math.round(minutes * 60) : 0;
+    this._callWS({ type: "wattix/set_settings", sensor_timeout_s });
   }
 
   _render() {
@@ -383,6 +410,13 @@ class WattixCard extends HTMLElement {
     this._els.autoIcon.style.color = state.auto_mode
       ? "var(--success-color, #43a047)"
       : "var(--disabled-text-color, #9e9e9e)";
+
+    // Don't stomp on the field while the user is actively editing it.
+    if (document.activeElement !== this._els.settingsTimeout) {
+      this._els.settingsTimeout.value = state.sensor_timeout_s
+        ? String(state.sensor_timeout_s / 60)
+        : "";
+    }
 
     // Skip rebuilding the device list while a form is open, so a live push
     // (every few seconds) doesn't rip focus out of an input the user is

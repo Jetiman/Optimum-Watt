@@ -29,6 +29,7 @@ from .const import (
     DEFAULT_HYSTERESIS_W,
     DEFAULT_ON_DELAY_S,
     DEFAULT_OFF_DELAY_S,
+    DEFAULT_SENSOR_TIMEOUT_S,
     DOMAIN,
     MODE_AUTO,
     MODE_DISABLED,
@@ -184,14 +185,26 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
         self._last_cascade_on_at: datetime | None = None
         self._last_cascade_off_at: datetime | None = None
 
+        # Instance-level safety setting: shut every switch down (staggered)
+        # if the grid power sensor stops reporting a fresh value. 0 = off.
+        self.sensor_timeout_s: int = DEFAULT_SENSOR_TIMEOUT_S
+        self._power_last_seen: datetime | None = None
+
         self._store = Store[dict[str, Any]](hass, STORAGE_VERSION, _storage_key(entry.entry_id))
         self._remove_power_listener = None
 
     async def async_setup(self) -> None:
-        """Load persisted devices and start listening to the grid power sensor."""
+        """Load persisted devices/settings and start listening to the grid power sensor."""
         stored = await self._store.async_load() or {}
         self.devices = [Device.from_storage(d) for d in stored.get("devices", [])]
+        self.sensor_timeout_s = stored.get("settings", {}).get(
+            "sensor_timeout_s", DEFAULT_SENSOR_TIMEOUT_S
+        )
 
+        # Start the staleness clock at startup, even if the sensor's first
+        # reading turns out invalid - a sensor that's broken from the start
+        # must still eventually trip the timeout instead of never starting.
+        self._power_last_seen = dt_util.utcnow()
         self._update_power_from_state(self.hass.states.get(self.grid_power_entity))
 
         @callback
@@ -225,6 +238,7 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
             self.current_power_w = None
             return
         self.current_power_w = -value if self.invert else value
+        self._power_last_seen = dt_util.utcnow()
 
     async def _async_update_data(self) -> None:
         await self._evaluate()
@@ -247,8 +261,13 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
 
     # -- Device CRUD -----------------------------------------------------
 
-    async def _async_save_devices(self) -> None:
-        await self._store.async_save({"devices": [d.to_storage() for d in self.devices]})
+    async def _async_save_state(self) -> None:
+        await self._store.async_save(
+            {
+                "devices": [d.to_storage() for d in self.devices],
+                "settings": {"sensor_timeout_s": self.sensor_timeout_s},
+            }
+        )
 
     def _get_device(self, device_id: str) -> Device:
         for device in self.devices:
@@ -282,7 +301,7 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
             min_on_duration_s=int(min_on_duration_s) if min_on_duration_s else 0,
         )
         self.devices.append(device)
-        await self._async_save_devices()
+        await self._async_save_state()
         self._notify_and_reeval()
         return device
 
@@ -308,14 +327,14 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
             device.deficit_since = None
             device.insufficient_since = None
             device.recovered_since = None
-        await self._async_save_devices()
+        await self._async_save_state()
         self._notify_and_reeval()
         return device
 
     async def async_remove_device(self, device_id: str) -> None:
         device = self._get_device(device_id)
         self.devices.remove(device)
-        await self._async_save_devices()
+        await self._async_save_state()
         self._notify_and_reeval()
 
     async def async_reorder_devices(self, device_ids: list[str]) -> None:
@@ -323,20 +342,58 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
         if set(device_ids) != set(by_id):
             raise ValueError("device_ids must match the existing device set")
         self.devices = [by_id[i] for i in device_ids]
-        await self._async_save_devices()
+        await self._async_save_state()
         self._notify_and_reeval()
 
     def set_auto_mode(self, enabled: bool) -> None:
         self.auto_mode = enabled
         self._notify_and_reeval()
 
+    async def async_set_sensor_timeout(self, sensor_timeout_s: int) -> None:
+        self.sensor_timeout_s = max(int(sensor_timeout_s), 0)
+        await self._async_save_state()
+        self._notify_and_reeval()
+
     # -- Cascade evaluation ------------------------------------------------
+
+    def _is_sensor_stale(self, now: datetime) -> bool:
+        if self.sensor_timeout_s <= 0 or self._power_last_seen is None:
+            return False
+        return (now - self._power_last_seen).total_seconds() >= self.sensor_timeout_s
+
+    async def _run_stale_sensor_shutdown(self, now: datetime) -> None:
+        """Safety fallback for a stuck/dead grid power sensor.
+
+        We can no longer trust it to drive the cascade, so every switch
+        (except ones set to "Regelung aus") gets shut down regardless of
+        mode, one every CASCADE_STAGGER_S so they don't all drop at once.
+        """
+        candidates = [d for d in reversed(self.devices) if d.mode != MODE_DISABLED and d.active]
+        if not candidates:
+            return
+        if (
+            self._last_cascade_off_at is not None
+            and (now - self._last_cascade_off_at).total_seconds() < CASCADE_STAGGER_S
+        ):
+            return
+        _LOGGER.warning(
+            "Wattix: grid power sensor %s stale for %ss, switching %s off as a safety fallback",
+            self.grid_power_entity,
+            self.sensor_timeout_s,
+            candidates[0].entity_id,
+        )
+        await self._turn_off(candidates[0])
+        self._last_cascade_off_at = now
 
     async def _evaluate(self) -> None:
         now = dt_util.utcnow()
         now_local = dt_util.now()
 
         self._sync_active_from_states()
+
+        if self._is_sensor_stale(now):
+            await self._run_stale_sensor_shutdown(now)
+            return
 
         for device in self.devices:
             await self._sync_manual_mode(device)
@@ -608,6 +665,7 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
             "auto_mode": self.auto_mode,
             "surplus_w": self.current_power_w,
             "regulated_count": self.regulated_device_count,
+            "sensor_timeout_s": self.sensor_timeout_s,
             "devices": [
                 d.to_dict(self.device_seconds_remaining(d), self._effective_runtime_today_s(d))
                 for d in self.devices
