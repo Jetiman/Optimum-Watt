@@ -316,6 +316,7 @@ class WattixCard extends HTMLElement {
       .em-btn-secondary { background: transparent; color: var(--secondary-text-color); border: none; border-radius: 6px; padding: 8px 14px; cursor: pointer; }
       .em-settings { margin-top: 14px; border-top: 1px solid var(--divider-color, #ddd); padding-top: 10px; }
       .em-settings summary { cursor: pointer; font-weight: 500; color: var(--primary-text-color); }
+      .em-settings-feedback { font-size: 0.82em; align-self: center; margin-right: auto; }
     `;
 
     const titleHtml = this._config.title
@@ -369,6 +370,7 @@ class WattixCard extends HTMLElement {
           10-Sekunden-Takt abgeschaltet.
         </p>
         <div class="em-form-actions">
+          <span class="em-settings-feedback" id="em-settings-feedback"></span>
           <button class="em-btn-primary" id="em-settings-save">Speichern</button>
         </div>
       </details>
@@ -391,6 +393,7 @@ class WattixCard extends HTMLElement {
       alertText: card.querySelector("#em-alert-text"),
       settingsTimeout: card.querySelector("#em-settings-timeout"),
       settingsSave: card.querySelector("#em-settings-save"),
+      settingsFeedback: card.querySelector("#em-settings-feedback"),
     };
 
     this._els.autoIcon.addEventListener("click", () => this._toggleAuto());
@@ -398,11 +401,29 @@ class WattixCard extends HTMLElement {
     this._els.settingsSave.addEventListener("click", () => this._saveSettings());
   }
 
-  _saveSettings() {
+  _showSettingsFeedback(text, isError) {
+    const el = this._els.settingsFeedback;
+    el.textContent = text;
+    el.style.color = isError ? "var(--error-color, #d32f2f)" : "var(--success-color, #43a047)";
+    clearTimeout(this._settingsFeedbackTimeout);
+    this._settingsFeedbackTimeout = setTimeout(() => {
+      el.textContent = "";
+    }, 3000);
+  }
+
+  async _saveSettings() {
     const raw = this._els.settingsTimeout.value;
     const minutes = Number(raw);
     const sensor_timeout_s = raw !== "" && minutes > 0 ? Math.round(minutes * 60) : 0;
-    this._callWS({ type: "wattix/set_settings", sensor_timeout_s });
+    this._els.settingsSave.disabled = true;
+    try {
+      await this._callWS({ type: "wattix/set_settings", sensor_timeout_s });
+      this._showSettingsFeedback("Gespeichert ✓", false);
+    } catch (err) {
+      this._showSettingsFeedback("Fehler beim Speichern", true);
+    } finally {
+      this._els.settingsSave.disabled = false;
+    }
   }
 
   _render() {
