@@ -23,6 +23,7 @@ from .const import (
     CONF_PV_PRODUCTION_ENTITY,
     CONF_STORAGE_INVERT,
     CONF_STORAGE_POWER_ENTITY,
+    CONF_STORAGE_SOC_ENTITY,
     DOMAIN,
 )
 
@@ -47,6 +48,10 @@ def _schema(defaults: dict[str, Any]) -> vol.Schema:
             vol.Optional(
                 CONF_STORAGE_INVERT, default=defaults.get(CONF_STORAGE_INVERT, False)
             ): BooleanSelector(),
+            vol.Optional(
+                CONF_STORAGE_SOC_ENTITY,
+                description={"suggested_value": defaults.get(CONF_STORAGE_SOC_ENTITY)},
+            ): EntitySelector(EntitySelectorConfig(domain="sensor")),
         }
     )
 
@@ -54,7 +59,7 @@ def _schema(defaults: dict[str, Any]) -> vol.Schema:
 def _normalize(user_input: dict[str, Any]) -> dict[str, Any]:
     """Drop optional entity fields the user left empty instead of storing ''."""
     data = dict(user_input)
-    for key in (CONF_PV_PRODUCTION_ENTITY, CONF_STORAGE_POWER_ENTITY):
+    for key in (CONF_PV_PRODUCTION_ENTITY, CONF_STORAGE_POWER_ENTITY, CONF_STORAGE_SOC_ENTITY):
         if not data.get(key):
             data.pop(key, None)
     return data

@@ -15,6 +15,10 @@ CONF_INVERT = "invert"
 CONF_PV_PRODUCTION_ENTITY = "pv_production_entity"
 CONF_STORAGE_POWER_ENTITY = "storage_power_entity"
 CONF_STORAGE_INVERT = "storage_invert"
+# Optional: battery state of charge (%), so a device can additionally
+# require the battery to already be charged enough before switching on -
+# see Device.min_soc_percent in coordinator.py.
+CONF_STORAGE_SOC_ENTITY = "storage_soc_entity"
 
 # Defaults for a newly added device
 DEFAULT_HYSTERESIS_W = 0

@@ -49,6 +49,14 @@ Nach der Einrichtung hinterlegst du nur einen Sensor, der die aktuelle
   minus Hausverbrauch, noch bevor der Akku lädt – so lässt sich ein Gerät
   gegenüber der Batterieladung priorisieren). Die Option findet sich pro
   Gerät im Formularfeld „Einschaltschwelle bezieht sich auf".
+- Optional lässt sich zusätzlich ein **Speicher-Ladestand-Sensor (SoC)**
+  hinterlegen. Damit kannst du pro Gerät einen **Mindest-Speicher-Ladestand
+  (%) für Einschaltung** festlegen: Das Gerät springt dann nur an, wenn der
+  Speicher mindestens so weit geladen ist – zusätzlich zur normalen
+  Einschaltschwelle. Beispiel: Basis „Überschuss vor Speicherladung" +
+  Mindest-Ladestand 80 % schaltet das Gerät nur ein, wenn genug produziert
+  wird, um zu laden, UND der Speicher schon mindestens 80 % voll ist – so
+  bekommt die Batterieladung bis dahin Vorrang.
 - Jedes Gerät lässt sich jederzeit manuell auf **An** oder **Aus**
   erzwingen, unabhängig von der Automatik. Ein globaler Automatik-Schalter
   schaltet die gesamte Kaskade ein/aus.
@@ -100,8 +108,11 @@ Im Config-Flow wählst du:
    Akkus in Watt. Nur nötig für die Schwellenbasis „Überschuss vor
    Speicherladung". Zeigt dein Sensor Laden als negativen Wert an, aktiviere
    „Sensor zeigt Laden als negativen Wert an".
+4. **Sensor Speicher-Ladestand / SoC** (optional) – Ladestand des Akkus in
+   Prozent. Nur nötig, wenn ein Gerät zusätzlich einen Mindest-Speicher-
+   Ladestand für die Einschaltung voraussetzen soll.
 
-Das war's – Geräte fügst du danach im Interface hinzu. Die beiden optionalen
+Das war's – Geräte fügst du danach im Interface hinzu. Die optionalen
 Sensoren lassen sich jederzeit nachträglich über die Integrationsoptionen
 ergänzen.
 

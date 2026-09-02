@@ -205,6 +205,7 @@ class WattixCard extends HTMLElement {
       off_delay_min: "5",
       hysteresis_w: "0",
       threshold_basis: "surplus",
+      min_soc_percent: "",
       min_runtime_minutes: "",
       min_runtime_deadline: "",
       min_on_duration_min: "",
@@ -223,6 +224,7 @@ class WattixCard extends HTMLElement {
       off_delay_min: String(device.off_delay_s / 60),
       hysteresis_w: String(device.hysteresis_w),
       threshold_basis: device.threshold_basis || "surplus",
+      min_soc_percent: device.min_soc_percent ? String(device.min_soc_percent) : "",
       min_runtime_minutes: device.min_runtime_s ? String(device.min_runtime_s / 60) : "",
       min_runtime_deadline: device.min_runtime_deadline || "",
       min_on_duration_min: device.min_on_duration_s ? String(device.min_on_duration_s / 60) : "",
@@ -247,6 +249,8 @@ class WattixCard extends HTMLElement {
       power_w: Number(d.power_w),
       hysteresis_w: d.hysteresis_w === "" ? undefined : Number(d.hysteresis_w),
       threshold_basis: d.threshold_basis || "surplus",
+      min_soc_percent:
+        d.min_soc_percent !== "" && Number(d.min_soc_percent) > 0 ? Number(d.min_soc_percent) : 0,
       on_delay_s: Math.round(Number(d.on_delay_min) * 60),
       off_delay_s: Math.round(Number(d.off_delay_min) * 60),
       min_runtime_s: useMinRuntime ? Math.round(minutes * 60) : 0,
@@ -465,6 +469,10 @@ class WattixCard extends HTMLElement {
     const extraParts = [];
     if (state.has_pv_production_entity) extraParts.push(`Produktion ${fmtPower(state.production_w)}`);
     if (state.has_storage_entity) extraParts.push(`Speicher ${fmtPower(state.storage_w)}`);
+    if (state.has_storage_soc_entity) {
+      const soc = state.storage_soc;
+      extraParts.push(`SoC ${soc === null || soc === undefined ? "–" : Math.round(soc) + "%"}`);
+    }
     this._els.extraReadings.hidden = extraParts.length === 0;
     this._els.extraReadings.textContent = extraParts.join(" · ");
     this._els.activeCount.textContent = `${state.regulated_count} / ${state.devices.length} geregelt`;
@@ -540,6 +548,9 @@ class WattixCard extends HTMLElement {
       const basisOpt = THRESHOLD_BASIS_OPTIONS.find((o) => o.value === device.threshold_basis);
       if (basisOpt) sub += ` · Basis: ${basisOpt.label}`;
     }
+    if (device.min_soc_percent) {
+      sub += ` · ab ${Math.round(device.min_soc_percent)}% Speicher`;
+    }
     const remainingText = fmtSeconds(device.remaining_seconds);
     if (remainingText) {
       sub += device.active ? ` · schaltet in ${remainingText} ab` : ` · schaltet in ${remainingText} ein`;
@@ -603,6 +614,11 @@ class WattixCard extends HTMLElement {
         <select id="em-f-basis"></select>
         <p class="em-form-hint" id="em-f-basis-hint"></p>
       </div>
+      <div class="em-form-row">
+        <label>Mindest-Speicher-Ladestand (%) für Einschaltung</label>
+        <input type="number" id="em-f-min-soc" value="${escapeHtml(d.min_soc_percent)}" min="0" max="100" step="1" placeholder="leer = keine Einschränkung" />
+        <p class="em-form-hint" id="em-f-min-soc-hint"></p>
+      </div>
       <div class="em-form-row two">
         <div>
           <label>Einschaltverzögerung (min)</label>
@@ -647,7 +663,9 @@ class WattixCard extends HTMLElement {
     wrap.querySelector("#em-f-on-delay").addEventListener("input", (e) => (this._draft.on_delay_min = e.target.value));
     wrap.querySelector("#em-f-off-delay").addEventListener("input", (e) => (this._draft.off_delay_min = e.target.value));
     wrap.querySelector("#em-f-hysteresis").addEventListener("input", (e) => (this._draft.hysteresis_w = e.target.value));
+    wrap.querySelector("#em-f-min-soc").addEventListener("input", (e) => (this._draft.min_soc_percent = e.target.value));
     this._renderBasisSelect(wrap);
+    this._renderMinSocHint(wrap);
     wrap.querySelector("#em-f-min-runtime").addEventListener("input", (e) => (this._draft.min_runtime_minutes = e.target.value));
     wrap.querySelector("#em-f-min-on-duration").addEventListener("input", (e) => (this._draft.min_on_duration_min = e.target.value));
     wrap.querySelector("#em-f-min-runtime-deadline").addEventListener("input", (e) => (this._draft.min_runtime_deadline = e.target.value));
@@ -711,6 +729,15 @@ class WattixCard extends HTMLElement {
       this._draft.threshold_basis = e.target.value;
       updateHint();
     });
+  }
+
+  _renderMinSocHint(wrap) {
+    const hint = wrap.querySelector("#em-f-min-soc-hint");
+    const state = this._latestState || {};
+    const base = "Solange der Speicher nicht mindestens so weit geladen ist, springt das Gerät nicht an (0/leer = keine Einschränkung).";
+    hint.textContent = state.has_storage_soc_entity
+      ? base
+      : `${base} Achtung: Dafür ist noch kein Speicher-Ladestand-Sensor in den Wattix-Integrationseinstellungen hinterlegt.`;
   }
 
   static getStubConfig() {

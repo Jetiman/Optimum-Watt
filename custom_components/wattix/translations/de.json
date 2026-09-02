@@ -9,7 +9,8 @@
           "invert": "Sensor zeigt Einspeisung als negativen Wert an",
           "pv_production_entity": "Sensor PV-Produktion (optional)",
           "storage_power_entity": "Sensor Speicherleistung (optional)",
-          "storage_invert": "Sensor zeigt Laden als negativen Wert an"
+          "storage_invert": "Sensor zeigt Laden als negativen Wert an",
+          "storage_soc_entity": "Sensor Speicher-Ladestand / SoC (optional)"
         }
       }
     }
@@ -23,7 +24,8 @@
           "invert": "Sensor zeigt Einspeisung als negativen Wert an",
           "pv_production_entity": "Sensor PV-Produktion (optional)",
           "storage_power_entity": "Sensor Speicherleistung (optional)",
-          "storage_invert": "Sensor zeigt Laden als negativen Wert an"
+          "storage_invert": "Sensor zeigt Laden als negativen Wert an",
+          "storage_soc_entity": "Sensor Speicher-Ladestand / SoC (optional)"
         }
       }
     }

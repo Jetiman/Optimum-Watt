@@ -78,6 +78,17 @@ add_device:
             - "surplus"
             - "production"
             - "surplus_pre_storage"
+    min_soc_percent:
+      name: Mindest-Speicher-Ladestand
+      description: Gerät darf nur einschalten, wenn der Speicher mindestens so weit geladen ist (%). 0/leer = keine Einschränkung.
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+          unit_of_measurement: "%"
+          mode: box
     min_runtime_s:
       name: Mindestlaufzeit pro Tag
       description: Sekunden, die das Gerät pro Tag mindestens laufen soll. Wird die Zeit sonst nicht erreicht, schaltet Wattix das Gerät notfalls auch ohne Überschuss ein, rechtzeitig vor der Deadline. Zusammen mit min_runtime_deadline angeben.

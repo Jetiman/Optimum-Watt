@@ -9,7 +9,8 @@
           "invert": "Sensor reports feed-in as a negative value",
           "pv_production_entity": "PV production sensor (optional)",
           "storage_power_entity": "Battery power sensor (optional)",
-          "storage_invert": "Sensor reports charging as a negative value"
+          "storage_invert": "Sensor reports charging as a negative value",
+          "storage_soc_entity": "Battery state of charge sensor (optional)"
         }
       }
     }
@@ -23,7 +24,8 @@
           "invert": "Sensor reports feed-in as a negative value",
           "pv_production_entity": "PV production sensor (optional)",
           "storage_power_entity": "Battery power sensor (optional)",
-          "storage_invert": "Sensor reports charging as a negative value"
+          "storage_invert": "Sensor reports charging as a negative value",
+          "storage_soc_entity": "Battery state of charge sensor (optional)"
         }
       }
     }

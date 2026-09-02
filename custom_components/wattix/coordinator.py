@@ -29,6 +29,7 @@ from .const import (
     CONF_PV_PRODUCTION_ENTITY,
     CONF_STORAGE_INVERT,
     CONF_STORAGE_POWER_ENTITY,
+    CONF_STORAGE_SOC_ENTITY,
     DEFAULT_HYSTERESIS_W,
     DEFAULT_ON_DELAY_S,
     DEFAULT_OFF_DELAY_S,
@@ -70,6 +71,12 @@ class Device:
     # in const.py. Defaults to "surplus" (grid feed-in), matching every
     # device created before this setting existed.
     threshold_basis: str = DEFAULT_THRESHOLD_BASIS
+
+    # Extra gate on top of the threshold basis above: the device may only
+    # switch ON while the battery is at least this charged. 0 = no gate.
+    # Doesn't affect switching off - a running device isn't forced off by
+    # the battery level dropping.
+    min_soc_percent: float = 0.0
 
     # Daily minimum runtime guarantee ("Mindestlaufzeit"): if the device
     # hasn't accumulated min_runtime_s of runtime today by the deadline,
@@ -136,6 +143,7 @@ class Device:
             "off_delay_s": self.off_delay_s,
             "mode": self.mode,
             "threshold_basis": self.threshold_basis,
+            "min_soc_percent": self.min_soc_percent,
             "min_runtime_s": self.min_runtime_s,
             "min_runtime_deadline": self.min_runtime_deadline,
             "runtime_today_s": self.runtime_today_s,
@@ -170,6 +178,7 @@ class Device:
             off_delay_s=data.get("off_delay_s", DEFAULT_OFF_DELAY_S),
             mode=data.get("mode", MODE_AUTO),
             threshold_basis=data.get("threshold_basis", DEFAULT_THRESHOLD_BASIS),
+            min_soc_percent=data.get("min_soc_percent", 0.0),
             min_runtime_s=data.get("min_runtime_s", 0),
             min_runtime_deadline=data.get("min_runtime_deadline"),
             runtime_today_s=data.get("runtime_today_s", 0.0),
@@ -196,6 +205,7 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
         self.pv_production_entity: str | None = entry.data.get(CONF_PV_PRODUCTION_ENTITY)
         self.storage_power_entity: str | None = entry.data.get(CONF_STORAGE_POWER_ENTITY)
         self.storage_invert: bool = entry.data.get(CONF_STORAGE_INVERT, False)
+        self.storage_soc_entity: str | None = entry.data.get(CONF_STORAGE_SOC_ENTITY)
 
         self.auto_mode: bool = True
         self.current_power_w: float | None = None
@@ -203,6 +213,8 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
         # charging / negative = discharging. None while unconfigured.
         self.production_w: float | None = None
         self.storage_w: float | None = None
+        # Battery state of charge (%). None while unconfigured.
+        self.storage_soc: float | None = None
         self.devices: list[Device] = []
         self._last_cascade_on_at: datetime | None = None
         self._last_cascade_off_at: datetime | None = None
@@ -213,11 +225,13 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
         self._power_last_seen: datetime | None = None
         self._production_last_seen: datetime | None = None
         self._storage_last_seen: datetime | None = None
+        self._storage_soc_last_seen: datetime | None = None
 
         self._store = Store[dict[str, Any]](hass, STORAGE_VERSION, _storage_key(entry.entry_id))
         self._remove_power_listener = None
         self._remove_production_listener = None
         self._remove_storage_listener = None
+        self._remove_storage_soc_listener = None
 
     async def async_setup(self) -> None:
         """Load persisted devices/settings and start listening to the grid power sensor."""
@@ -268,6 +282,19 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
                 self.hass, [self.storage_power_entity], _storage_changed
             )
 
+        if self.storage_soc_entity:
+            self._storage_soc_last_seen = dt_util.utcnow()
+            self._update_storage_soc_from_state(self.hass.states.get(self.storage_soc_entity))
+
+            @callback
+            def _storage_soc_changed(event) -> None:
+                self._update_storage_soc_from_state(event.data.get("new_state"))
+                self.hass.async_create_task(self.async_request_refresh())
+
+            self._remove_storage_soc_listener = async_track_state_change_event(
+                self.hass, [self.storage_soc_entity], _storage_soc_changed
+            )
+
     @callback
     def async_unload(self) -> None:
         if self._remove_power_listener:
@@ -279,6 +306,9 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
         if self._remove_storage_listener:
             self._remove_storage_listener()
             self._remove_storage_listener = None
+        if self._remove_storage_soc_listener:
+            self._remove_storage_soc_listener()
+            self._remove_storage_soc_listener = None
 
     @staticmethod
     async def async_remove_storage(hass: HomeAssistant, entry_id: str) -> None:
@@ -323,6 +353,18 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
             return
         self.storage_w = -value if self.storage_invert else value
         self._storage_last_seen = dt_util.utcnow()
+
+    @callback
+    def _update_storage_soc_from_state(self, state: State | None) -> None:
+        if state is None or state.state in ("unknown", "unavailable", ""):
+            self.storage_soc = None
+            return
+        try:
+            self.storage_soc = float(state.state)
+        except (ValueError, TypeError):
+            self.storage_soc = None
+            return
+        self._storage_soc_last_seen = dt_util.utcnow()
 
     @property
     def surplus_pre_storage_w(self) -> float | None:
@@ -388,6 +430,7 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
         on_delay_s: int | None = None,
         off_delay_s: int | None = None,
         threshold_basis: str | None = None,
+        min_soc_percent: float | None = None,
         min_runtime_s: int | None = None,
         min_runtime_deadline: str | None = None,
         min_on_duration_s: int | None = None,
@@ -401,6 +444,7 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
             on_delay_s=int(on_delay_s) if on_delay_s is not None else DEFAULT_ON_DELAY_S,
             off_delay_s=int(off_delay_s) if off_delay_s is not None else DEFAULT_OFF_DELAY_S,
             threshold_basis=threshold_basis or DEFAULT_THRESHOLD_BASIS,
+            min_soc_percent=float(min_soc_percent) if min_soc_percent else 0.0,
             min_runtime_s=int(min_runtime_s) if min_runtime_s else 0,
             min_runtime_deadline=min_runtime_deadline or None,
             min_on_duration_s=int(min_on_duration_s) if min_on_duration_s else 0,
@@ -421,6 +465,7 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
             "off_delay_s",
             "mode",
             "threshold_basis",
+            "min_soc_percent",
             "min_runtime_s",
             "min_runtime_deadline",
             "min_on_duration_s",
@@ -477,6 +522,8 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
             last_seen_times.append(self._production_last_seen)
         if self.storage_power_entity:
             last_seen_times.append(self._storage_last_seen)
+        if self.storage_soc_entity:
+            last_seen_times.append(self._storage_soc_last_seen)
         for last_seen in last_seen_times:
             if last_seen is None or (now - last_seen).total_seconds() >= self.sensor_timeout_s:
                 return True
@@ -561,6 +608,11 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
                 else basis_value - reserved_w
             )
             met = available >= d.on_threshold_w
+            if met and d.min_soc_percent > 0:
+                # Extra gate: won't switch on until the battery itself is
+                # charged enough, regardless of how the basis check above
+                # came out. Fails closed - no SOC reading, no switch-on.
+                met = self.storage_soc is not None and self.storage_soc >= d.min_soc_percent
             d.surplus_met = met
             qualifies, d.insufficient_since = self._debounced_still_qualifies(
                 now, met, d.surplus_since, d.insufficient_since
@@ -807,8 +859,10 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
             "production_w": self.production_w,
             "storage_w": self.storage_w,
             "surplus_pre_storage_w": self.surplus_pre_storage_w,
+            "storage_soc": self.storage_soc,
             "has_pv_production_entity": bool(self.pv_production_entity),
             "has_storage_entity": bool(self.storage_power_entity),
+            "has_storage_soc_entity": bool(self.storage_soc_entity),
             "regulated_count": self.regulated_device_count,
             "sensor_timeout_s": self.sensor_timeout_s,
             "sensor_stale": self._is_sensor_stale(dt_util.utcnow()),
