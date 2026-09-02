@@ -108,7 +108,11 @@ class WattixCard extends HTMLElement {
   }
 
   _formOpen() {
-    return this._editingId !== null && this._editingId !== undefined || this._addingNew;
+    return (
+      (this._editingId !== null && this._editingId !== undefined) ||
+      this._addingNew ||
+      this._editingPriorityId !== null && this._editingPriorityId !== undefined
+    );
   }
 
   async _ensureEntryId() {
@@ -187,6 +191,32 @@ class WattixCard extends HTMLElement {
     if (swapIdx < 0 || swapIdx >= ids.length) return;
     [ids[idx], ids[swapIdx]] = [ids[swapIdx], ids[idx]];
     this._callWS({ type: "wattix/reorder_devices", device_ids: ids });
+  }
+
+  _setDevicePosition(deviceId, newPosition) {
+    const ids = this._latestState.devices.map((d) => d.id);
+    const idx = ids.indexOf(deviceId);
+    if (idx === -1) return;
+    const target = Math.max(0, Math.min(ids.length - 1, Math.round(newPosition) - 1));
+    if (target === idx) return;
+    ids.splice(idx, 1);
+    ids.splice(target, 0, deviceId);
+    this._callWS({ type: "wattix/reorder_devices", device_ids: ids });
+  }
+
+  _startEditPriority(deviceId) {
+    if (this._addingNew || (this._editingId !== null && this._editingId !== undefined)) return;
+    this._editingPriorityId = deviceId;
+    this._renderDevicesWithForm();
+  }
+
+  _commitPriority(deviceId, rawValue) {
+    this._editingPriorityId = null;
+    const value = Number(rawValue);
+    if (Number.isFinite(value) && value > 0) {
+      this._setDevicePosition(deviceId, value);
+    }
+    this._render();
   }
 
   _deleteDevice(deviceId, name) {
@@ -318,7 +348,9 @@ class WattixCard extends HTMLElement {
       .em-device.disabled { opacity: 0.55; }
       .em-device ha-icon { --mdc-icon-size: 24px; flex-shrink: 0; }
       .em-device-order { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-      .em-device-num { font-size: 0.72em; font-weight: 600; opacity: 0.75; line-height: 1; }
+      .em-device-num { font-size: 0.72em; font-weight: 600; opacity: 0.75; line-height: 1; cursor: pointer; padding: 2px 4px; border-radius: 4px; }
+      .em-device-num:hover { background: rgba(127,127,127,0.2); }
+      .em-device-num-input { width: 30px; font-size: 0.72em; font-weight: 600; text-align: center; padding: 1px 0; border-radius: 4px; border: 1px solid var(--divider-color, #ccc); background: var(--card-background-color); color: var(--primary-text-color); }
       .em-device-main { flex: 1 1 140px; min-width: 140px; }
       .em-device-name { font-weight: 500; overflow-wrap: break-word; word-break: break-word; }
       .em-device-sub { font-size: 0.82em; opacity: 0.85; overflow-wrap: break-word; word-break: break-word; }
@@ -559,10 +591,15 @@ class WattixCard extends HTMLElement {
       sub += ` · ${fmtMinutes(device.runtime_today_s)}/${fmtMinutes(device.min_runtime_s)} min bis ${device.min_runtime_deadline}`;
     }
 
+    const editingPriority = this._editingPriorityId === device.id;
+    const numHtml = editingPriority
+      ? `<input type="number" class="em-device-num-input" min="1" max="${total}" step="1" value="${idx + 1}" />`
+      : `<span class="em-device-num" title="Klicken, um Position direkt einzugeben">${idx + 1}</span>`;
+
     el.innerHTML = `
       <div class="em-device-order">
         <button class="em-icon-btn" data-action="up" ${idx === 0 ? "disabled" : ""} title="Höhere Priorität">▲</button>
-        <span class="em-device-num" title="Priorität">${idx + 1}</span>
+        ${numHtml}
         <button class="em-icon-btn" data-action="down" ${idx === total - 1 ? "disabled" : ""} title="Niedrigere Priorität">▼</button>
       </div>
       <ha-icon icon="mdi:power-socket-eu"></ha-icon>
@@ -587,6 +624,20 @@ class WattixCard extends HTMLElement {
     el.querySelectorAll(".em-modes button").forEach((btn) => {
       btn.addEventListener("click", () => this._setMode(device.id, btn.getAttribute("data-mode")));
     });
+
+    if (editingPriority) {
+      const input = el.querySelector(".em-device-num-input");
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") input.blur();
+      });
+      input.addEventListener("blur", () => this._commitPriority(device.id, input.value));
+      requestAnimationFrame(() => {
+        input.focus();
+        input.select();
+      });
+    } else {
+      el.querySelector(".em-device-num").addEventListener("click", () => this._startEditPriority(device.id));
+    }
 
     return el;
   }
