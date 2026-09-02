@@ -6,7 +6,10 @@
         "description": "Wähle den Sensor, der die aktuelle Netz-Einspeiseleistung liefert (z. B. von einem Shelly, einer Zähler-Integration o. Ä.). Geräte werden anschließend über die Dashboard-Karte angelegt und priorisiert.",
         "data": {
           "grid_power_entity": "Sensor Einspeiseleistung",
-          "invert": "Sensor zeigt Einspeisung als negativen Wert an"
+          "invert": "Sensor zeigt Einspeisung als negativen Wert an",
+          "pv_production_entity": "Sensor PV-Produktion (optional)",
+          "storage_power_entity": "Sensor Speicherleistung (optional)",
+          "storage_invert": "Sensor zeigt Laden als negativen Wert an"
         }
       }
     }
@@ -17,7 +20,10 @@
         "title": "Wattix bearbeiten",
         "data": {
           "grid_power_entity": "Sensor Einspeiseleistung",
-          "invert": "Sensor zeigt Einspeisung als negativen Wert an"
+          "invert": "Sensor zeigt Einspeisung als negativen Wert an",
+          "pv_production_entity": "Sensor PV-Produktion (optional)",
+          "storage_power_entity": "Sensor Speicherleistung (optional)",
+          "storage_invert": "Sensor zeigt Laden als negativen Wert an"
         }
       }
     }

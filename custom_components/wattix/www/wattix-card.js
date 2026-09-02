@@ -16,6 +16,31 @@ const STATUS_LABELS = {
   catchup: "Pflichtlauf (Mindestlaufzeit)",
 };
 
+// What a device's threshold is measured against - keep in sync with
+// THRESHOLD_BASIS_* in const.py. `needs` names the state flag that must be
+// true (has_pv_production_entity / has_storage_entity) for the option to be
+// usable; null means it's always available.
+const THRESHOLD_BASIS_OPTIONS = [
+  {
+    value: "surplus",
+    label: "Überschuss (Netzeinspeisung)",
+    hint: "Schaltet ein, sobald genug Leistung ins Netz eingespeist wird.",
+    needs: null,
+  },
+  {
+    value: "production",
+    label: "PV-Produktion",
+    hint: "Schaltet ein, sobald die Anlage genug produziert – unabhängig vom Hausverbrauch.",
+    needs: "has_pv_production_entity",
+  },
+  {
+    value: "surplus_pre_storage",
+    label: "Überschuss vor Speicherladung",
+    hint: "Schaltet ein, sobald mehr produziert als verbraucht wird – noch bevor der Speicher lädt.",
+    needs: "has_storage_entity",
+  },
+];
+
 function fmtMinutes(seconds) {
   if (seconds === null || seconds === undefined) return "–";
   return Math.round(seconds / 60).toString();
@@ -179,6 +204,7 @@ class WattixCard extends HTMLElement {
       on_delay_min: "5",
       off_delay_min: "5",
       hysteresis_w: "100",
+      threshold_basis: "surplus",
       min_runtime_minutes: "",
       min_runtime_deadline: "",
       min_on_duration_min: "",
@@ -196,6 +222,7 @@ class WattixCard extends HTMLElement {
       on_delay_min: String(device.on_delay_s / 60),
       off_delay_min: String(device.off_delay_s / 60),
       hysteresis_w: String(device.hysteresis_w),
+      threshold_basis: device.threshold_basis || "surplus",
       min_runtime_minutes: device.min_runtime_s ? String(device.min_runtime_s / 60) : "",
       min_runtime_deadline: device.min_runtime_deadline || "",
       min_on_duration_min: device.min_on_duration_s ? String(device.min_on_duration_s / 60) : "",
@@ -219,6 +246,7 @@ class WattixCard extends HTMLElement {
       entity_id: d.entity_id.trim(),
       power_w: Number(d.power_w),
       hysteresis_w: d.hysteresis_w === "" ? undefined : Number(d.hysteresis_w),
+      threshold_basis: d.threshold_basis || "surplus",
       on_delay_s: Math.round(Number(d.on_delay_min) * 60),
       off_delay_s: Math.round(Number(d.off_delay_min) * 60),
       min_runtime_s: useMinRuntime ? Math.round(minutes * 60) : 0,
@@ -268,6 +296,7 @@ class WattixCard extends HTMLElement {
       .em-surplus { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
       .em-surplus .value { font-size: 2em; font-weight: 600; }
       .em-surplus .label { color: var(--secondary-text-color); font-size: 0.9em; }
+      .em-extra-readings { color: var(--secondary-text-color); font-size: 0.85em; margin: -4px 0 8px; }
       .em-alert { display: flex; align-items: flex-start; gap: 8px; background: var(--error-color, #d32f2f); color: white; padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; font-size: 0.85em; font-weight: 500; }
       .em-alert[hidden] { display: none; }
       .em-alert ha-icon { --mdc-icon-size: 20px; flex-shrink: 0; }
@@ -301,7 +330,7 @@ class WattixCard extends HTMLElement {
       .em-form-row.two { flex-direction: row; gap: 10px; flex-wrap: wrap; }
       .em-form-row.two > div { flex: 1 1 140px; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
       .em-form-row label { font-size: 0.8em; color: var(--secondary-text-color); overflow-wrap: break-word; }
-      .em-form-row input { border-radius: 6px; border: 1px solid var(--divider-color, #ccc); padding: 6px 8px; background: var(--card-background-color); color: var(--primary-text-color); width: 100%; box-sizing: border-box; min-width: 0; }
+      .em-form-row input, .em-form-row select { border-radius: 6px; border: 1px solid var(--divider-color, #ccc); padding: 6px 8px; background: var(--card-background-color); color: var(--primary-text-color); width: 100%; box-sizing: border-box; min-width: 0; }
       .em-form { min-width: 0; }
       #em-f-entity-wrap, #em-f-entity-wrap ha-entity-picker { width: 100%; box-sizing: border-box; }
       .em-form-advanced { margin-bottom: 10px; }
@@ -346,6 +375,7 @@ class WattixCard extends HTMLElement {
         <div class="value" id="em-surplus-value">–</div>
         <div class="label">Überschuss aktuell</div>
       </div>
+      <div class="em-extra-readings" id="em-extra-readings" hidden></div>
       <div class="em-alert" id="em-alert" hidden>
         <ha-icon icon="mdi:alert"></ha-icon>
         <span id="em-alert-text"></span>
@@ -386,6 +416,7 @@ class WattixCard extends HTMLElement {
     this._els = {
       autoIcon: card.querySelector("#em-auto-icon"),
       surplusValue: card.querySelector("#em-surplus-value"),
+      extraReadings: card.querySelector("#em-extra-readings"),
       activeCount: card.querySelector("#em-active-count"),
       devices: card.querySelector("#em-devices"),
       addBtn: card.querySelector("#em-add-btn"),
@@ -431,6 +462,11 @@ class WattixCard extends HTMLElement {
     if (!state) return;
 
     this._els.surplusValue.textContent = fmtPower(state.surplus_w);
+    const extraParts = [];
+    if (state.has_pv_production_entity) extraParts.push(`Produktion ${fmtPower(state.production_w)}`);
+    if (state.has_storage_entity) extraParts.push(`Speicher ${fmtPower(state.storage_w)}`);
+    this._els.extraReadings.hidden = extraParts.length === 0;
+    this._els.extraReadings.textContent = extraParts.join(" · ");
     this._els.activeCount.textContent = `${state.regulated_count} / ${state.devices.length} geregelt`;
     this._els.autoIcon.setAttribute(
       "icon",
@@ -500,6 +536,10 @@ class WattixCard extends HTMLElement {
     else if (pending) el.classList.add("pending");
 
     let sub = `${STATUS_LABELS[device.status] || device.status} · ${fmtPower(device.power_w)}`;
+    if (device.threshold_basis && device.threshold_basis !== "surplus") {
+      const basisOpt = THRESHOLD_BASIS_OPTIONS.find((o) => o.value === device.threshold_basis);
+      if (basisOpt) sub += ` · Basis: ${basisOpt.label}`;
+    }
     const remainingText = fmtSeconds(device.remaining_seconds);
     if (remainingText) {
       sub += device.active ? ` · schaltet in ${remainingText} ab` : ` · schaltet in ${remainingText} ein`;
@@ -558,6 +598,11 @@ class WattixCard extends HTMLElement {
         <label>Leistungsbedarf (W) – zugleich Einschaltschwelle</label>
         <input type="number" id="em-f-power" value="${escapeHtml(d.power_w)}" min="0" step="10" />
       </div>
+      <div class="em-form-row">
+        <label>Einschaltschwelle bezieht sich auf</label>
+        <select id="em-f-basis"></select>
+        <p class="em-form-hint" id="em-f-basis-hint"></p>
+      </div>
       <div class="em-form-row two">
         <div>
           <label>Einschaltverzögerung (min)</label>
@@ -602,6 +647,7 @@ class WattixCard extends HTMLElement {
     wrap.querySelector("#em-f-on-delay").addEventListener("input", (e) => (this._draft.on_delay_min = e.target.value));
     wrap.querySelector("#em-f-off-delay").addEventListener("input", (e) => (this._draft.off_delay_min = e.target.value));
     wrap.querySelector("#em-f-hysteresis").addEventListener("input", (e) => (this._draft.hysteresis_w = e.target.value));
+    this._renderBasisSelect(wrap);
     wrap.querySelector("#em-f-min-runtime").addEventListener("input", (e) => (this._draft.min_runtime_minutes = e.target.value));
     wrap.querySelector("#em-f-min-on-duration").addEventListener("input", (e) => (this._draft.min_on_duration_min = e.target.value));
     wrap.querySelector("#em-f-min-runtime-deadline").addEventListener("input", (e) => (this._draft.min_runtime_deadline = e.target.value));
@@ -641,6 +687,30 @@ class WattixCard extends HTMLElement {
     }
 
     return wrap;
+  }
+
+  _renderBasisSelect(wrap) {
+    const select = wrap.querySelector("#em-f-basis");
+    const hint = wrap.querySelector("#em-f-basis-hint");
+    const state = this._latestState || {};
+    select.innerHTML = THRESHOLD_BASIS_OPTIONS.map(
+      (opt) => `<option value="${opt.value}">${escapeHtml(opt.label)}</option>`
+    ).join("");
+    select.value = this._draft.threshold_basis;
+
+    const updateHint = () => {
+      const opt = THRESHOLD_BASIS_OPTIONS.find((o) => o.value === select.value) || THRESHOLD_BASIS_OPTIONS[0];
+      const unavailable = opt.needs && !state[opt.needs];
+      hint.textContent = unavailable
+        ? `${opt.hint} Achtung: Dafür ist noch kein passender Sensor in den Wattix-Integrationseinstellungen hinterlegt.`
+        : opt.hint;
+    };
+    updateHint();
+
+    select.addEventListener("change", (e) => {
+      this._draft.threshold_basis = e.target.value;
+      updateHint();
+    });
   }
 
   static getStubConfig() {

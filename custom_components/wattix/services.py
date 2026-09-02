@@ -7,7 +7,7 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 
-from .const import DOMAIN, MODE_AUTO, MODE_DISABLED, MODE_OFF, MODE_ON
+from .const import DOMAIN, MODE_AUTO, MODE_DISABLED, MODE_OFF, MODE_ON, THRESHOLD_BASES
 from .coordinator import WattixCoordinator
 
 SERVICE_ADD_DEVICE = "add_device"
@@ -23,6 +23,7 @@ ATTR_POWER_W = "power_w"
 ATTR_HYSTERESIS_W = "hysteresis_w"
 ATTR_ON_DELAY_S = "on_delay_s"
 ATTR_OFF_DELAY_S = "off_delay_s"
+ATTR_THRESHOLD_BASIS = "threshold_basis"
 ATTR_MODE = "mode"
 ATTR_ENABLED = "enabled"
 ATTR_MIN_RUNTIME_S = "min_runtime_s"
@@ -40,6 +41,7 @@ ADD_DEVICE_SCHEMA = vol.Schema(
         vol.Optional(ATTR_HYSTERESIS_W): vol.Coerce(float),
         vol.Optional(ATTR_ON_DELAY_S): vol.Coerce(int),
         vol.Optional(ATTR_OFF_DELAY_S): vol.Coerce(int),
+        vol.Optional(ATTR_THRESHOLD_BASIS): vol.In(THRESHOLD_BASES),
         vol.Optional(ATTR_MIN_RUNTIME_S): vol.Coerce(int),
         vol.Optional(ATTR_MIN_RUNTIME_DEADLINE): DEADLINE_SCHEMA,
         vol.Optional(ATTR_MIN_ON_DURATION_S): vol.Coerce(int),
@@ -88,6 +90,7 @@ async def async_register_services(hass: HomeAssistant) -> None:
             hysteresis_w=call.data.get(ATTR_HYSTERESIS_W),
             on_delay_s=call.data.get(ATTR_ON_DELAY_S),
             off_delay_s=call.data.get(ATTR_OFF_DELAY_S),
+            threshold_basis=call.data.get(ATTR_THRESHOLD_BASIS),
             min_runtime_s=call.data.get(ATTR_MIN_RUNTIME_S),
             min_runtime_deadline=call.data.get(ATTR_MIN_RUNTIME_DEADLINE),
             min_on_duration_s=call.data.get(ATTR_MIN_ON_DURATION_S),

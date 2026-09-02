@@ -68,6 +68,16 @@ add_device:
           step: 10
           unit_of_measurement: s
           mode: box
+    threshold_basis:
+      name: Schwellenbasis
+      description: Worauf sich die Einschaltschwelle bezieht - surplus = Netzüberschuss (Standard), production = rohe PV-Produktion, surplus_pre_storage = Überschuss vor Speicherladung.
+      required: false
+      selector:
+        select:
+          options:
+            - "surplus"
+            - "production"
+            - "surplus_pre_storage"
     min_runtime_s:
       name: Mindestlaufzeit pro Tag
       description: Sekunden, die das Gerät pro Tag mindestens laufen soll. Wird die Zeit sonst nicht erreicht, schaltet Wattix das Gerät notfalls auch ohne Überschuss ein, rechtzeitig vor der Deadline. Zusammen mit min_runtime_deadline angeben.

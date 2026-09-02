@@ -13,7 +13,7 @@ import voluptuous as vol
 from homeassistant.components import websocket_api
 from homeassistant.core import HomeAssistant, callback
 
-from .const import DOMAIN, MODE_AUTO, MODE_DISABLED, MODE_OFF, MODE_ON
+from .const import DOMAIN, MODE_AUTO, MODE_DISABLED, MODE_OFF, MODE_ON, THRESHOLD_BASES
 from .coordinator import WattixCoordinator
 
 # Local "HH:MM" time of day, e.g. "19:00" - the deadline for a device's
@@ -53,6 +53,7 @@ async def ws_list_devices(hass, connection, msg):
         vol.Optional("hysteresis_w"): vol.Coerce(float),
         vol.Optional("on_delay_s"): vol.Coerce(int),
         vol.Optional("off_delay_s"): vol.Coerce(int),
+        vol.Optional("threshold_basis"): vol.In(THRESHOLD_BASES),
         vol.Optional("min_runtime_s"): vol.Coerce(int),
         vol.Optional("min_runtime_deadline"): DEADLINE_SCHEMA,
         vol.Optional("min_on_duration_s"): vol.Coerce(int),
@@ -72,6 +73,7 @@ async def ws_add_device(hass, connection, msg):
         hysteresis_w=msg.get("hysteresis_w"),
         on_delay_s=msg.get("on_delay_s"),
         off_delay_s=msg.get("off_delay_s"),
+        threshold_basis=msg.get("threshold_basis"),
         min_runtime_s=msg.get("min_runtime_s"),
         min_runtime_deadline=msg.get("min_runtime_deadline"),
         min_on_duration_s=msg.get("min_on_duration_s"),
@@ -91,6 +93,7 @@ async def ws_add_device(hass, connection, msg):
         vol.Optional("on_delay_s"): vol.Coerce(int),
         vol.Optional("off_delay_s"): vol.Coerce(int),
         vol.Optional("mode"): vol.In([MODE_AUTO, MODE_ON, MODE_OFF, MODE_DISABLED]),
+        vol.Optional("threshold_basis"): vol.In(THRESHOLD_BASES),
         vol.Optional("min_runtime_s"): vol.Coerce(int),
         vol.Optional("min_runtime_deadline"): DEADLINE_SCHEMA,
         vol.Optional("min_on_duration_s"): vol.Coerce(int),

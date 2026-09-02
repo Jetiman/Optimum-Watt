@@ -6,7 +6,10 @@
         "description": "Choose the sensor that reports current grid feed-in power (e.g. from a Shelly, an energy meter integration, or similar). Devices are added and prioritized afterwards in the dashboard card.",
         "data": {
           "grid_power_entity": "Grid feed-in power sensor",
-          "invert": "Sensor reports feed-in as a negative value"
+          "invert": "Sensor reports feed-in as a negative value",
+          "pv_production_entity": "PV production sensor (optional)",
+          "storage_power_entity": "Battery power sensor (optional)",
+          "storage_invert": "Sensor reports charging as a negative value"
         }
       }
     }
@@ -17,7 +20,10 @@
         "title": "Edit Wattix",
         "data": {
           "grid_power_entity": "Grid feed-in power sensor",
-          "invert": "Sensor reports feed-in as a negative value"
+          "invert": "Sensor reports feed-in as a negative value",
+          "pv_production_entity": "PV production sensor (optional)",
+          "storage_power_entity": "Battery power sensor (optional)",
+          "storage_invert": "Sensor reports charging as a negative value"
         }
       }
     }

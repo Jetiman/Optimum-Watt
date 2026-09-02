@@ -41,6 +41,14 @@ Nach der Einrichtung hinterlegst du nur einen Sensor, der die aktuelle
   30 Sekunden anhält, zählt er als echte Änderung.
 - Eine Hysterese (Standard 100 W, unter „Erweitert") verhindert, dass ein
   Gerät bei schwankendem Überschuss knapp an der Schwelle flattert.
+- Optional lassen sich zusätzlich ein **PV-Produktions-** und ein
+  **Speicherleistungs-Sensor** hinterlegen. Damit kann die Einschaltschwelle
+  eines Geräts statt auf den Überschuss auch auf die **rohe PV-Produktion**
+  bezogen werden (z. B. „ab 50 W Produktion einschalten", unabhängig vom
+  Hausverbrauch) oder auf den **Überschuss vor Speicherladung** (Produktion
+  minus Hausverbrauch, noch bevor der Akku lädt – so lässt sich ein Gerät
+  gegenüber der Batterieladung priorisieren). Die Option findet sich pro
+  Gerät im Formularfeld „Einschaltschwelle bezieht sich auf".
 - Jedes Gerät lässt sich jederzeit manuell auf **An** oder **Aus**
   erzwingen, unabhängig von der Automatik. Ein globaler Automatik-Schalter
   schaltet die gesamte Kaskade ein/aus.
@@ -79,14 +87,23 @@ Platzhalters angezeigt – ganz ohne separate Einreichung.
 
 ## Einrichtung
 
-Im Config-Flow wählst du nur:
+Im Config-Flow wählst du:
 
-1. **Sensor Einspeiseleistung** – ein `sensor`-Entity mit der aktuellen
-   Netzleistung in Watt (positiv = Einspeisung). Zeigt dein Sensor
+1. **Sensor Einspeiseleistung** (Pflicht) – ein `sensor`-Entity mit der
+   aktuellen Netzleistung in Watt (positiv = Einspeisung). Zeigt dein Sensor
    Einspeisung als negativen Wert an, aktiviere „Sensor zeigt Einspeisung
    als negativen Wert an".
+2. **Sensor PV-Produktion** (optional) – aktuelle Erzeugungsleistung der
+   Anlage in Watt. Nur nötig, wenn ein Gerät seine Einschaltschwelle direkt
+   an der Produktion statt am Überschuss messen soll.
+3. **Sensor Speicherleistung** (optional) – Lade-/Entladeleistung des
+   Akkus in Watt. Nur nötig für die Schwellenbasis „Überschuss vor
+   Speicherladung". Zeigt dein Sensor Laden als negativen Wert an, aktiviere
+   „Sensor zeigt Laden als negativen Wert an".
 
-Das war's – Geräte fügst du danach im Interface hinzu.
+Das war's – Geräte fügst du danach im Interface hinzu. Die beiden optionalen
+Sensoren lassen sich jederzeit nachträglich über die Integrationsoptionen
+ergänzen.
 
 ## Sidebar-Button
 
