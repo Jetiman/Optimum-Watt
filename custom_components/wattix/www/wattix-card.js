@@ -734,7 +734,7 @@ class WattixCard extends HTMLElement {
   _renderMinSocHint(wrap) {
     const hint = wrap.querySelector("#em-f-min-soc-hint");
     const state = this._latestState || {};
-    const base = "Solange der Speicher nicht mindestens so weit geladen ist, springt das Gerät nicht an (0/leer = keine Einschränkung).";
+    const base = "Solange der Speicher nicht mindestens so weit geladen ist, springt das Gerät nicht an (0/leer = keine Einschränkung). Ausnahme: Wird schon tatsächlich ins Netz eingespeist und deckt das allein die Einschaltschwelle, gilt das Limit nicht.";
     hint.textContent = state.has_storage_soc_entity
       ? base
       : `${base} Achtung: Dafür ist noch kein Speicher-Ladestand-Sensor in den Wattix-Integrationseinstellungen hinterlegt.`;

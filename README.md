@@ -56,7 +56,11 @@ Nach der Einrichtung hinterlegst du nur einen Sensor, der die aktuelle
   Einschaltschwelle. Beispiel: Basis „Überschuss vor Speicherladung" +
   Mindest-Ladestand 80 % schaltet das Gerät nur ein, wenn genug produziert
   wird, um zu laden, UND der Speicher schon mindestens 80 % voll ist – so
-  bekommt die Batterieladung bis dahin Vorrang.
+  bekommt die Batterieladung bis dahin Vorrang. Die Ausnahme: Wird bereits
+  tatsächlich ins Netz eingespeist und deckt das allein schon die
+  Einschaltschwelle des Geräts (z. B. weil die PV-Produktion die maximale
+  Laderate des Speichers übersteigt), greift das Ladestand-Limit nicht –
+  das Gerät nimmt dann ja nichts von der Speicherladung weg.
 - Jedes Gerät lässt sich jederzeit manuell auf **An** oder **Aus**
   erzwingen, unabhängig von der Automatik. Ein globaler Automatik-Schalter
   schaltet die gesamte Kaskade ein/aus.

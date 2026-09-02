@@ -609,10 +609,19 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
             )
             met = available >= d.on_threshold_w
             if met and d.min_soc_percent > 0:
-                # Extra gate: won't switch on until the battery itself is
-                # charged enough, regardless of how the basis check above
-                # came out. Fails closed - no SOC reading, no switch-on.
-                met = self.storage_soc is not None and self.storage_soc >= d.min_soc_percent
+                # Extra gate: normally won't switch on until the battery
+                # itself is charged enough - but only actually applies while
+                # this device would be competing with the battery for power
+                # (i.e. it only qualifies via the surplus_pre_storage boost).
+                # If the grid is already exporting enough on its own (e.g.
+                # production exceeds the battery's max charge rate, so some
+                # is spilling to the grid regardless of SoC), the device
+                # isn't taking anything away from charging and the gate is
+                # waived. Fails closed - no SoC reading, no switch-on.
+                grid_alone = self.current_power_w
+                grid_covers_it = grid_alone is not None and grid_alone - reserved_w >= d.on_threshold_w
+                if not grid_covers_it:
+                    met = self.storage_soc is not None and self.storage_soc >= d.min_soc_percent
             d.surplus_met = met
             qualifies, d.insufficient_since = self._debounced_still_qualifies(
                 now, met, d.surplus_since, d.insufficient_since

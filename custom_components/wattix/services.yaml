@@ -80,7 +80,7 @@ add_device:
             - "surplus_pre_storage"
     min_soc_percent:
       name: Mindest-Speicher-Ladestand
-      description: Gerät darf nur einschalten, wenn der Speicher mindestens so weit geladen ist (%). 0/leer = keine Einschränkung.
+      description: Gerät darf nur einschalten, wenn der Speicher mindestens so weit geladen ist (%). Gilt nicht, wenn bereits tatsächlich ins Netz eingespeist wird und das allein die Einschaltschwelle deckt. 0/leer = keine Einschränkung.
       required: false
       selector:
         number:
