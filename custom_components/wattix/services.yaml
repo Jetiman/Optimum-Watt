@@ -37,7 +37,7 @@ add_device:
           mode: box
     hysteresis_w:
       name: Hysterese
-      description: Abstand zwischen Ein- und Ausschaltschwelle (Standard 100 W).
+      description: Abstand zwischen Ein- und Ausschaltschwelle (Standard 0 W).
       required: false
       selector:
         number:

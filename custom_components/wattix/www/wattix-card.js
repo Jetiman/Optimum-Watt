@@ -203,7 +203,7 @@ class WattixCard extends HTMLElement {
       power_w: "500",
       on_delay_min: "5",
       off_delay_min: "5",
-      hysteresis_w: "100",
+      hysteresis_w: "0",
       threshold_basis: "surplus",
       min_runtime_minutes: "",
       min_runtime_deadline: "",

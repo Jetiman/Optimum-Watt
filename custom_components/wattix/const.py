@@ -17,7 +17,7 @@ CONF_STORAGE_POWER_ENTITY = "storage_power_entity"
 CONF_STORAGE_INVERT = "storage_invert"
 
 # Defaults for a newly added device
-DEFAULT_HYSTERESIS_W = 100
+DEFAULT_HYSTERESIS_W = 0
 DEFAULT_ON_DELAY_S = 300
 DEFAULT_OFF_DELAY_S = 300
 

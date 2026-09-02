@@ -39,7 +39,7 @@ Nach der Einrichtung hinterlegst du nur einen Sensor, der die aktuelle
   Speicher/Akku, der beim Nachregeln kurz ins Plus pendelt) unterbricht
   eine schon laufende Verzögerung nicht sofort – erst wenn der Ausreißer
   30 Sekunden anhält, zählt er als echte Änderung.
-- Eine Hysterese (Standard 100 W, unter „Erweitert") verhindert, dass ein
+- Eine Hysterese (Standard 0 W, unter „Erweitert") verhindert, dass ein
   Gerät bei schwankendem Überschuss knapp an der Schwelle flattert.
 - Optional lassen sich zusätzlich ein **PV-Produktions-** und ein
   **Speicherleistungs-Sensor** hinterlegen. Damit kann die Einschaltschwelle
