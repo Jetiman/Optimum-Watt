@@ -507,6 +507,29 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
 
     # -- Cascade evaluation ------------------------------------------------
 
+    def _entity_is_fresh(self, entity_id: str, last_seen: datetime | None, now: datetime) -> bool:
+        """Whether one entity counts as reporting fresh data right now.
+
+        A sensor's value can legitimately sit unchanged for a long time
+        (e.g. PV production is exactly 0 W all night) - Home Assistant then
+        never fires a new state_changed event for it (identical value+
+        attributes are suppressed), so relying only on "time since last
+        event" would flag it stale even though it's perfectly alive and
+        still being polled. Checking its current state directly sidesteps
+        that: as long as it currently holds a valid, parseable value, it's
+        fresh, full stop. Only once it actually goes unavailable/unknown
+        does the timeout-based "how long since we last saw a good value"
+        grace period (tracked via `last_seen`) kick in.
+        """
+        state = self.hass.states.get(entity_id)
+        if state is not None and state.state not in ("unknown", "unavailable", ""):
+            try:
+                float(state.state)
+                return True
+            except (ValueError, TypeError):
+                pass
+        return last_seen is not None and (now - last_seen).total_seconds() < self.sensor_timeout_s
+
     def _is_sensor_stale(self, now: datetime) -> bool:
         """Whether any configured power sensor has gone stale.
 
@@ -517,17 +540,14 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
         """
         if self.sensor_timeout_s <= 0:
             return False
-        last_seen_times = [self._power_last_seen]
+        checks = [(self.grid_power_entity, self._power_last_seen)]
         if self.pv_production_entity:
-            last_seen_times.append(self._production_last_seen)
+            checks.append((self.pv_production_entity, self._production_last_seen))
         if self.storage_power_entity:
-            last_seen_times.append(self._storage_last_seen)
+            checks.append((self.storage_power_entity, self._storage_last_seen))
         if self.storage_soc_entity:
-            last_seen_times.append(self._storage_soc_last_seen)
-        for last_seen in last_seen_times:
-            if last_seen is None or (now - last_seen).total_seconds() >= self.sensor_timeout_s:
-                return True
-        return False
+            checks.append((self.storage_soc_entity, self._storage_soc_last_seen))
+        return not all(self._entity_is_fresh(entity_id, last_seen, now) for entity_id, last_seen in checks)
 
     async def _run_stale_sensor_shutdown(self, now: datetime) -> None:
         """Safety fallback for a stuck/dead grid power sensor.
