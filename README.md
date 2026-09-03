@@ -97,6 +97,21 @@ Platzhalters angezeigt – ganz ohne separate Einreichung.
 3. „Optimum Watt" installieren und Home Assistant neu starten.
 4. Einstellungen → Geräte & Dienste → Integration hinzufügen → „Optimum Watt".
 
+### Beta-Builds testen
+
+Der `optimum-watt`-Branch veröffentlicht bei jedem Push einen rollenden
+Beta-Build unter dem Tag `v<version>-beta` (überschreibt sich selbst).
+
+1. In HACS das Repository „Optimum Watt" öffnen → Menü (⋮) → *Neu
+   herunterladen* → **„Beta-Versionen anzeigen"** aktivieren.
+2. `v0.2.1-beta` auswählen und herunterladen, Home Assistant neu starten.
+3. Für einen neueren Beta-Build denselben Schritt wiederholen (*Neu
+   herunterladen* → `v0.2.1-beta`) – der Tag bleibt gleich, der Inhalt ist
+   aktuell.
+
+Zum Zurückwechseln auf stabil: „Beta-Versionen anzeigen" deaktivieren und
+die letzte reguläre Version herunterladen.
+
 ## Einrichtung
 
 Im Config-Flow wählst du:
