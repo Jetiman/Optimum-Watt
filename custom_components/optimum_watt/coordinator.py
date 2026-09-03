@@ -26,10 +26,15 @@ from .const import (
     CASCADE_STAGGER_S,
     CONF_GRID_POWER_ENTITY,
     CONF_INVERT,
+    CONF_PV_PRODUCTION_ENTITY,
+    CONF_STORAGE_INVERT,
+    CONF_STORAGE_POWER_ENTITY,
+    CONF_STORAGE_SOC_ENTITY,
     DEFAULT_HYSTERESIS_W,
     DEFAULT_ON_DELAY_S,
     DEFAULT_OFF_DELAY_S,
     DEFAULT_SENSOR_TIMEOUT_S,
+    DEFAULT_THRESHOLD_BASIS,
     DOMAIN,
     MODE_AUTO,
     MODE_DISABLED,
@@ -37,6 +42,8 @@ from .const import (
     MODE_ON,
     RESET_GRACE_S,
     STORAGE_VERSION,
+    THRESHOLD_BASIS_PRODUCTION,
+    THRESHOLD_BASIS_SURPLUS_PRE_STORAGE,
     UPDATE_INTERVAL,
 )
 
@@ -59,6 +66,17 @@ class Device:
     on_delay_s: int = DEFAULT_ON_DELAY_S
     off_delay_s: int = DEFAULT_OFF_DELAY_S
     mode: str = MODE_AUTO
+
+    # What the threshold below is measured against - see THRESHOLD_BASIS_*
+    # in const.py. Defaults to "surplus" (grid feed-in), matching every
+    # device created before this setting existed.
+    threshold_basis: str = DEFAULT_THRESHOLD_BASIS
+
+    # Extra gate on top of the threshold basis above: the device may only
+    # switch ON while the battery is at least this charged. 0 = no gate.
+    # Doesn't affect switching off - a running device isn't forced off by
+    # the battery level dropping.
+    min_soc_percent: float = 0.0
 
     # Daily minimum runtime guarantee ("Mindestlaufzeit"): if the device
     # hasn't accumulated min_runtime_s of runtime today by the deadline,
@@ -124,6 +142,8 @@ class Device:
             "on_delay_s": self.on_delay_s,
             "off_delay_s": self.off_delay_s,
             "mode": self.mode,
+            "threshold_basis": self.threshold_basis,
+            "min_soc_percent": self.min_soc_percent,
             "min_runtime_s": self.min_runtime_s,
             "min_runtime_deadline": self.min_runtime_deadline,
             "runtime_today_s": self.runtime_today_s,
@@ -157,6 +177,8 @@ class Device:
             on_delay_s=data.get("on_delay_s", DEFAULT_ON_DELAY_S),
             off_delay_s=data.get("off_delay_s", DEFAULT_OFF_DELAY_S),
             mode=data.get("mode", MODE_AUTO),
+            threshold_basis=data.get("threshold_basis", DEFAULT_THRESHOLD_BASIS),
+            min_soc_percent=data.get("min_soc_percent", 0.0),
             min_runtime_s=data.get("min_runtime_s", 0),
             min_runtime_deadline=data.get("min_runtime_deadline"),
             runtime_today_s=data.get("runtime_today_s", 0.0),
@@ -178,20 +200,38 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
         self.entry = entry
         self.grid_power_entity: str = entry.data[CONF_GRID_POWER_ENTITY]
         self.invert: bool = entry.data.get(CONF_INVERT, False)
+        # Optional: raw PV production and battery power, so devices can key
+        # their threshold off something other than grid feed-in.
+        self.pv_production_entity: str | None = entry.data.get(CONF_PV_PRODUCTION_ENTITY)
+        self.storage_power_entity: str | None = entry.data.get(CONF_STORAGE_POWER_ENTITY)
+        self.storage_invert: bool = entry.data.get(CONF_STORAGE_INVERT, False)
+        self.storage_soc_entity: str | None = entry.data.get(CONF_STORAGE_SOC_ENTITY)
 
         self.auto_mode: bool = True
         self.current_power_w: float | None = None
+        # Raw PV production (W) and battery power, normalized so positive =
+        # charging / negative = discharging. None while unconfigured.
+        self.production_w: float | None = None
+        self.storage_w: float | None = None
+        # Battery state of charge (%). None while unconfigured.
+        self.storage_soc: float | None = None
         self.devices: list[Device] = []
         self._last_cascade_on_at: datetime | None = None
         self._last_cascade_off_at: datetime | None = None
 
         # Instance-level safety setting: shut every switch down (staggered)
-        # if the grid power sensor stops reporting a fresh value. 0 = off.
+        # if any configured power sensor stops reporting a fresh value. 0 = off.
         self.sensor_timeout_s: int = DEFAULT_SENSOR_TIMEOUT_S
         self._power_last_seen: datetime | None = None
+        self._production_last_seen: datetime | None = None
+        self._storage_last_seen: datetime | None = None
+        self._storage_soc_last_seen: datetime | None = None
 
         self._store = Store[dict[str, Any]](hass, STORAGE_VERSION, _storage_key(entry.entry_id))
         self._remove_power_listener = None
+        self._remove_production_listener = None
+        self._remove_storage_listener = None
+        self._remove_storage_soc_listener = None
 
     async def async_setup(self) -> None:
         """Load persisted devices/settings and start listening to the grid power sensor."""
@@ -216,11 +256,59 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
             self.hass, [self.grid_power_entity], _power_changed
         )
 
+        if self.pv_production_entity:
+            self._production_last_seen = dt_util.utcnow()
+            self._update_production_from_state(self.hass.states.get(self.pv_production_entity))
+
+            @callback
+            def _production_changed(event) -> None:
+                self._update_production_from_state(event.data.get("new_state"))
+                self.hass.async_create_task(self.async_request_refresh())
+
+            self._remove_production_listener = async_track_state_change_event(
+                self.hass, [self.pv_production_entity], _production_changed
+            )
+
+        if self.storage_power_entity:
+            self._storage_last_seen = dt_util.utcnow()
+            self._update_storage_from_state(self.hass.states.get(self.storage_power_entity))
+
+            @callback
+            def _storage_changed(event) -> None:
+                self._update_storage_from_state(event.data.get("new_state"))
+                self.hass.async_create_task(self.async_request_refresh())
+
+            self._remove_storage_listener = async_track_state_change_event(
+                self.hass, [self.storage_power_entity], _storage_changed
+            )
+
+        if self.storage_soc_entity:
+            self._storage_soc_last_seen = dt_util.utcnow()
+            self._update_storage_soc_from_state(self.hass.states.get(self.storage_soc_entity))
+
+            @callback
+            def _storage_soc_changed(event) -> None:
+                self._update_storage_soc_from_state(event.data.get("new_state"))
+                self.hass.async_create_task(self.async_request_refresh())
+
+            self._remove_storage_soc_listener = async_track_state_change_event(
+                self.hass, [self.storage_soc_entity], _storage_soc_changed
+            )
+
     @callback
     def async_unload(self) -> None:
         if self._remove_power_listener:
             self._remove_power_listener()
             self._remove_power_listener = None
+        if self._remove_production_listener:
+            self._remove_production_listener()
+            self._remove_production_listener = None
+        if self._remove_storage_listener:
+            self._remove_storage_listener()
+            self._remove_storage_listener = None
+        if self._remove_storage_soc_listener:
+            self._remove_storage_soc_listener()
+            self._remove_storage_soc_listener = None
 
     @staticmethod
     async def async_remove_storage(hass: HomeAssistant, entry_id: str) -> None:
@@ -239,6 +327,63 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
             return
         self.current_power_w = -value if self.invert else value
         self._power_last_seen = dt_util.utcnow()
+
+    @callback
+    def _update_production_from_state(self, state: State | None) -> None:
+        if state is None or state.state in ("unknown", "unavailable", ""):
+            self.production_w = None
+            return
+        try:
+            self.production_w = float(state.state)
+        except (ValueError, TypeError):
+            self.production_w = None
+            return
+        self._production_last_seen = dt_util.utcnow()
+
+    @callback
+    def _update_storage_from_state(self, state: State | None) -> None:
+        """Normalize so positive = charging, negative = discharging."""
+        if state is None or state.state in ("unknown", "unavailable", ""):
+            self.storage_w = None
+            return
+        try:
+            value = float(state.state)
+        except (ValueError, TypeError):
+            self.storage_w = None
+            return
+        self.storage_w = -value if self.storage_invert else value
+        self._storage_last_seen = dt_util.utcnow()
+
+    @callback
+    def _update_storage_soc_from_state(self, state: State | None) -> None:
+        if state is None or state.state in ("unknown", "unavailable", ""):
+            self.storage_soc = None
+            return
+        try:
+            self.storage_soc = float(state.state)
+        except (ValueError, TypeError):
+            self.storage_soc = None
+            return
+        self._storage_soc_last_seen = dt_util.utcnow()
+
+    @property
+    def surplus_pre_storage_w(self) -> float | None:
+        """Production minus house consumption, before battery charging is deducted.
+
+        Equal to grid feed-in plus whatever is currently charging into the
+        battery (or minus whatever it's discharging) - see THRESHOLD_BASIS_
+        SURPLUS_PRE_STORAGE in const.py.
+        """
+        if self.current_power_w is None or self.storage_w is None:
+            return None
+        return self.current_power_w + self.storage_w
+
+    def _basis_value(self, basis: str) -> float | None:
+        if basis == THRESHOLD_BASIS_PRODUCTION:
+            return self.production_w
+        if basis == THRESHOLD_BASIS_SURPLUS_PRE_STORAGE:
+            return self.surplus_pre_storage_w
+        return self.current_power_w
 
     async def _async_update_data(self) -> None:
         await self._evaluate()
@@ -284,6 +429,8 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
         hysteresis_w: float | None = None,
         on_delay_s: int | None = None,
         off_delay_s: int | None = None,
+        threshold_basis: str | None = None,
+        min_soc_percent: float | None = None,
         min_runtime_s: int | None = None,
         min_runtime_deadline: str | None = None,
         min_on_duration_s: int | None = None,
@@ -296,6 +443,8 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
             hysteresis_w=float(hysteresis_w) if hysteresis_w is not None else DEFAULT_HYSTERESIS_W,
             on_delay_s=int(on_delay_s) if on_delay_s is not None else DEFAULT_ON_DELAY_S,
             off_delay_s=int(off_delay_s) if off_delay_s is not None else DEFAULT_OFF_DELAY_S,
+            threshold_basis=threshold_basis or DEFAULT_THRESHOLD_BASIS,
+            min_soc_percent=float(min_soc_percent) if min_soc_percent else 0.0,
             min_runtime_s=int(min_runtime_s) if min_runtime_s else 0,
             min_runtime_deadline=min_runtime_deadline or None,
             min_on_duration_s=int(min_on_duration_s) if min_on_duration_s else 0,
@@ -315,6 +464,8 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
             "on_delay_s",
             "off_delay_s",
             "mode",
+            "threshold_basis",
+            "min_soc_percent",
             "min_runtime_s",
             "min_runtime_deadline",
             "min_on_duration_s",
@@ -356,10 +507,47 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
 
     # -- Cascade evaluation ------------------------------------------------
 
+    def _entity_is_fresh(self, entity_id: str, last_seen: datetime | None, now: datetime) -> bool:
+        """Whether one entity counts as reporting fresh data right now.
+
+        A sensor's value can legitimately sit unchanged for a long time
+        (e.g. PV production is exactly 0 W all night) - Home Assistant then
+        never fires a new state_changed event for it (identical value+
+        attributes are suppressed), so relying only on "time since last
+        event" would flag it stale even though it's perfectly alive and
+        still being polled. Checking its current state directly sidesteps
+        that: as long as it currently holds a valid, parseable value, it's
+        fresh, full stop. Only once it actually goes unavailable/unknown
+        does the timeout-based "how long since we last saw a good value"
+        grace period (tracked via `last_seen`) kick in.
+        """
+        state = self.hass.states.get(entity_id)
+        if state is not None and state.state not in ("unknown", "unavailable", ""):
+            try:
+                float(state.state)
+                return True
+            except (ValueError, TypeError):
+                pass
+        return last_seen is not None and (now - last_seen).total_seconds() < self.sensor_timeout_s
+
     def _is_sensor_stale(self, now: datetime) -> bool:
-        if self.sensor_timeout_s <= 0 or self._power_last_seen is None:
+        """Whether any configured power sensor has gone stale.
+
+        Covers the grid sensor plus, if set up, the PV production and
+        battery sensors - a device relying on either of those for its
+        threshold is just as blind to a dead one as the cascade normally
+        is to a dead grid sensor.
+        """
+        if self.sensor_timeout_s <= 0:
             return False
-        return (now - self._power_last_seen).total_seconds() >= self.sensor_timeout_s
+        checks = [(self.grid_power_entity, self._power_last_seen)]
+        if self.pv_production_entity:
+            checks.append((self.pv_production_entity, self._production_last_seen))
+        if self.storage_power_entity:
+            checks.append((self.storage_power_entity, self._storage_last_seen))
+        if self.storage_soc_entity:
+            checks.append((self.storage_soc_entity, self._storage_soc_last_seen))
+        return not all(self._entity_is_fresh(entity_id, last_seen, now) for entity_id, last_seen in checks)
 
     async def _run_stale_sensor_shutdown(self, now: datetime) -> None:
         """Safety fallback for a stuck/dead grid power sensor.
@@ -377,8 +565,7 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
         ):
             return
         _LOGGER.warning(
-            "Optimum Watt: grid power sensor %s stale for %ss, switching %s off as a safety fallback",
-            self.grid_power_entity,
+            "Optimum Watt: a configured power sensor is stale for %ss, switching %s off as a safety fallback",
             self.sensor_timeout_s,
             candidates[0].entity_id,
         )
@@ -405,30 +592,56 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
             self._roll_over_runtime(device, now_local)
             await self._evaluate_min_runtime(device, now_local)
 
-        power = self.current_power_w
-        if power is None:
-            return
-
         # Turn ON: every inactive device in auto mode, in priority (list)
-        # order, that currently fits within the surplus together with the
-        # higher-priority devices already reserved ahead of it - not just
-        # the first one. A big-enough surplus lets several on-delay timers
-        # run at once instead of fully serializing through each device's
-        # on_delay_s one after another; the actual switch-on actions are
-        # still spaced at least CASCADE_STAGGER_S apart below so they don't
-        # all fire in the same instant. A device that no longer fits (or
-        # is no longer first in line) has its timer cleared here too, which
-        # also prevents the stale-timer bug where a device that once briefly
-        # qualified kept counting down in the background and fired instantly
-        # (stuck "0s") once it qualified again. A running timer survives a
-        # brief dip below threshold via _debounced_still_qualifies (see
-        # there) so a single noisy reading can't wipe out an almost-complete
-        # wait.
+        # order, that currently fits within its own threshold basis
+        # together with the higher-priority devices already reserved ahead
+        # of it - not just the first one. A big-enough surplus lets several
+        # on-delay timers run at once instead of fully serializing through
+        # each device's on_delay_s one after another; the actual switch-on
+        # actions are still spaced at least CASCADE_STAGGER_S apart below so
+        # they don't all fire in the same instant. A device that no longer
+        # fits (or is no longer first in line) has its timer cleared here
+        # too, which also prevents the stale-timer bug where a device that
+        # once briefly qualified kept counting down in the background and
+        # fired instantly (stuck "0s") once it qualified again. A running
+        # timer survives a brief dip below threshold via
+        # _debounced_still_qualifies (see there) so a single noisy reading
+        # can't wipe out an almost-complete wait.
+        #
+        # `reserved_w` tracks real wattage already committed to
+        # higher-priority devices, regardless of *their* threshold basis -
+        # once one of them switches on it draws real power, which reduces
+        # what's left over for anyone below it that measures against a
+        # shared pool (surplus / surplus_pre_storage). A device measured
+        # against raw PV production isn't reduced by it though: production
+        # doesn't care how much the house is drawing.
         reserved_w = 0.0
         for d in self.devices:
             if d.mode != MODE_AUTO or d.active:
                 continue
-            met = power - reserved_w >= d.on_threshold_w
+            basis_value = self._basis_value(d.threshold_basis)
+            if basis_value is None:
+                continue
+            available = (
+                basis_value
+                if d.threshold_basis == THRESHOLD_BASIS_PRODUCTION
+                else basis_value - reserved_w
+            )
+            met = available >= d.on_threshold_w
+            if met and d.min_soc_percent > 0:
+                # Extra gate: normally won't switch on until the battery
+                # itself is charged enough - but only actually applies while
+                # this device would be competing with the battery for power
+                # (i.e. it only qualifies via the surplus_pre_storage boost).
+                # If the grid is already exporting enough on its own (e.g.
+                # production exceeds the battery's max charge rate, so some
+                # is spilling to the grid regardless of SoC), the device
+                # isn't taking anything away from charging and the gate is
+                # waived. Fails closed - no SoC reading, no switch-on.
+                grid_alone = self.current_power_w
+                grid_covers_it = grid_alone is not None and grid_alone - reserved_w >= d.on_threshold_w
+                if not grid_covers_it:
+                    met = self.storage_soc is not None and self.storage_soc >= d.min_soc_percent
             d.surplus_met = met
             qualifies, d.insufficient_since = self._debounced_still_qualifies(
                 now, met, d.surplus_since, d.insufficient_since
@@ -469,7 +682,15 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
                 d.recovered_since = None
                 d.deficit_met = False
                 continue
-            met = power + freed_w < d.off_threshold_w
+            basis_value = self._basis_value(d.threshold_basis)
+            if basis_value is None:
+                continue
+            available = (
+                basis_value
+                if d.threshold_basis == THRESHOLD_BASIS_PRODUCTION
+                else basis_value + freed_w
+            )
+            met = available < d.off_threshold_w
             d.deficit_met = met
             qualifies, d.recovered_since = self._debounced_still_qualifies(
                 now, met, d.deficit_since, d.recovered_since
@@ -664,6 +885,13 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
         return {
             "auto_mode": self.auto_mode,
             "surplus_w": self.current_power_w,
+            "production_w": self.production_w,
+            "storage_w": self.storage_w,
+            "surplus_pre_storage_w": self.surplus_pre_storage_w,
+            "storage_soc": self.storage_soc,
+            "has_pv_production_entity": bool(self.pv_production_entity),
+            "has_storage_entity": bool(self.storage_power_entity),
+            "has_storage_soc_entity": bool(self.storage_soc_entity),
             "regulated_count": self.regulated_device_count,
             "sensor_timeout_s": self.sensor_timeout_s,
             "sensor_stale": self._is_sensor_stale(dt_util.utcnow()),

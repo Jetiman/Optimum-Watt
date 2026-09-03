@@ -17,7 +17,15 @@ from homeassistant.helpers.selector import (
     EntitySelectorConfig,
 )
 
-from .const import CONF_GRID_POWER_ENTITY, CONF_INVERT, DOMAIN
+from .const import (
+    CONF_GRID_POWER_ENTITY,
+    CONF_INVERT,
+    CONF_PV_PRODUCTION_ENTITY,
+    CONF_STORAGE_INVERT,
+    CONF_STORAGE_POWER_ENTITY,
+    CONF_STORAGE_SOC_ENTITY,
+    DOMAIN,
+)
 
 
 def _schema(defaults: dict[str, Any]) -> vol.Schema:
@@ -29,8 +37,32 @@ def _schema(defaults: dict[str, Any]) -> vol.Schema:
             vol.Required(
                 CONF_INVERT, default=defaults.get(CONF_INVERT, False)
             ): BooleanSelector(),
+            vol.Optional(
+                CONF_PV_PRODUCTION_ENTITY,
+                description={"suggested_value": defaults.get(CONF_PV_PRODUCTION_ENTITY)},
+            ): EntitySelector(EntitySelectorConfig(domain="sensor")),
+            vol.Optional(
+                CONF_STORAGE_POWER_ENTITY,
+                description={"suggested_value": defaults.get(CONF_STORAGE_POWER_ENTITY)},
+            ): EntitySelector(EntitySelectorConfig(domain="sensor")),
+            vol.Optional(
+                CONF_STORAGE_INVERT, default=defaults.get(CONF_STORAGE_INVERT, False)
+            ): BooleanSelector(),
+            vol.Optional(
+                CONF_STORAGE_SOC_ENTITY,
+                description={"suggested_value": defaults.get(CONF_STORAGE_SOC_ENTITY)},
+            ): EntitySelector(EntitySelectorConfig(domain="sensor")),
         }
     )
+
+
+def _normalize(user_input: dict[str, Any]) -> dict[str, Any]:
+    """Drop optional entity fields the user left empty instead of storing ''."""
+    data = dict(user_input)
+    for key in (CONF_PV_PRODUCTION_ENTITY, CONF_STORAGE_POWER_ENTITY, CONF_STORAGE_SOC_ENTITY):
+        if not data.get(key):
+            data.pop(key, None)
+    return data
 
 
 class OptimumWattConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -42,7 +74,7 @@ class OptimumWattConfigFlow(ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> Any:
         if user_input is not None:
-            return self.async_create_entry(title="Optimum Watt", data=user_input)
+            return self.async_create_entry(title="Optimum Watt", data=_normalize(user_input))
 
         return self.async_show_form(step_id="user", data_schema=_schema({}))
 
@@ -62,7 +94,9 @@ class OptimumWattOptionsFlow(OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> Any:
         if user_input is not None:
-            self.hass.config_entries.async_update_entry(self._entry, data=user_input)
+            self.hass.config_entries.async_update_entry(
+                self._entry, data=_normalize(user_input)
+            )
             return self.async_create_entry(title="", data={})
 
         return self.async_show_form(

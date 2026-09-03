@@ -37,7 +37,7 @@ add_device:
           mode: box
     hysteresis_w:
       name: Hysterese
-      description: Abstand zwischen Ein- und Ausschaltschwelle (Standard 100 W).
+      description: Abstand zwischen Ein- und Ausschaltschwelle (Standard 0 W).
       required: false
       selector:
         number:
@@ -67,6 +67,27 @@ add_device:
           max: 3600
           step: 10
           unit_of_measurement: s
+          mode: box
+    threshold_basis:
+      name: Schwellenbasis
+      description: Worauf sich die Einschaltschwelle bezieht - surplus = Netzüberschuss (Standard), production = rohe PV-Produktion, surplus_pre_storage = Überschuss vor Speicherladung.
+      required: false
+      selector:
+        select:
+          options:
+            - "surplus"
+            - "production"
+            - "surplus_pre_storage"
+    min_soc_percent:
+      name: Mindest-Speicher-Ladestand
+      description: Gerät darf nur einschalten, wenn der Speicher mindestens so weit geladen ist (%). Gilt nicht, wenn bereits tatsächlich ins Netz eingespeist wird und das allein die Einschaltschwelle deckt. 0/leer = keine Einschränkung.
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+          unit_of_measurement: "%"
           mode: box
     min_runtime_s:
       name: Mindestlaufzeit pro Tag

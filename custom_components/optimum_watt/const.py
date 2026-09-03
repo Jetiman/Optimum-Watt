@@ -8,9 +8,20 @@ DOMAIN = "optimum_watt"
 # Config entry data keys
 CONF_GRID_POWER_ENTITY = "grid_power_entity"
 CONF_INVERT = "invert"
+# Optional: raw PV production and battery power, so a device's switch-on
+# threshold can be based on something other than grid feed-in (see
+# THRESHOLD_BASIS_* below). Both optional - existing setups keep working
+# unchanged with just the grid sensor.
+CONF_PV_PRODUCTION_ENTITY = "pv_production_entity"
+CONF_STORAGE_POWER_ENTITY = "storage_power_entity"
+CONF_STORAGE_INVERT = "storage_invert"
+# Optional: battery state of charge (%), so a device can additionally
+# require the battery to already be charged enough before switching on -
+# see Device.min_soc_percent in coordinator.py.
+CONF_STORAGE_SOC_ENTITY = "storage_soc_entity"
 
 # Defaults for a newly added device
-DEFAULT_HYSTERESIS_W = 100
+DEFAULT_HYSTERESIS_W = 0
 DEFAULT_ON_DELAY_S = 300
 DEFAULT_OFF_DELAY_S = 300
 
@@ -40,6 +51,26 @@ MODE_ON = "on"
 MODE_OFF = "off"
 MODE_DISABLED = "disabled"  # "Regelung aus": Optimum Watt does not touch this device at all
 DEVICE_MODES = [MODE_AUTO, MODE_ON, MODE_OFF, MODE_DISABLED]
+
+# What a device's on/off threshold is measured against.
+#   surplus             - grid feed-in (Überschuss), the default: what's left
+#                          over after the house and a charging battery.
+#   production          - raw PV production, regardless of house consumption
+#                          or battery state. E.g. "always on once the panels
+#                          make at least 50W".
+#   surplus_pre_storage  - production minus house consumption, *before* a
+#                          charging battery is subtracted (surplus + whatever
+#                          currently goes into the battery). Lets a device
+#                          outrank battery charging in the priority order.
+THRESHOLD_BASIS_SURPLUS = "surplus"
+THRESHOLD_BASIS_PRODUCTION = "production"
+THRESHOLD_BASIS_SURPLUS_PRE_STORAGE = "surplus_pre_storage"
+THRESHOLD_BASES = [
+    THRESHOLD_BASIS_SURPLUS,
+    THRESHOLD_BASIS_PRODUCTION,
+    THRESHOLD_BASIS_SURPLUS_PRE_STORAGE,
+]
+DEFAULT_THRESHOLD_BASIS = THRESHOLD_BASIS_SURPLUS
 
 PLATFORMS = ["sensor", "switch"]
 
