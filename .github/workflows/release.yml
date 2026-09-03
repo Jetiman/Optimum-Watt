@@ -2,7 +2,7 @@ name: Auto Release
 
 on:
   push:
-    branches: [wattix]
+    branches: [optimum-watt]
     paths:
       - "custom_components/optimum_watt/**"
       - "hacs.json"
