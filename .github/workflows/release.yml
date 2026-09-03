@@ -1,11 +1,15 @@
-name: Auto Release
+name: Release
+
+# A release is cut on demand by pushing a version tag that matches the
+# integration's manifest version, e.g.:
+#   git tag v0.2.0 && git push origin v0.2.0
+# workflow_dispatch releases the current manifest version.
 
 on:
   push:
-    branches: [optimum-watt]
-    paths:
-      - "custom_components/optimum_watt/**"
-      - "hacs.json"
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -16,14 +20,26 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Read manifest version
-        id: version
-        run: echo "version=$(jq -r .version custom_components/optimum_watt/manifest.json)" >> "$GITHUB_OUTPUT"
+      - name: Resolve tag and check manifest
+        id: rel
+        run: |
+          manifest="v$(jq -r .version custom_components/optimum_watt/manifest.json)"
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            tag="${{ github.ref_name }}"
+            if [ "$tag" != "$manifest" ]; then
+              echo "::error::Tag $tag does not match manifest version $manifest"
+              exit 1
+            fi
+          else
+            tag="$manifest"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.version.outputs.version }}-${{ github.run_number }}
-          name: Optimum Watt v${{ steps.version.outputs.version }} (Build ${{ github.run_number }})
+          tag_name: ${{ steps.rel.outputs.tag }}
+          name: Optimum Watt ${{ steps.rel.outputs.tag }}
           target_commitish: ${{ github.sha }}
           generate_release_notes: true
+          make_latest: true
