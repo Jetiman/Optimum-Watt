@@ -1,8 +1,8 @@
 /**
- * Wattix Lovelace card.
+ * Optimum Watt Lovelace card.
  *
  * Plain Web Component, no build step, no external dependencies. Talks to
- * the integration's websocket API (wattix/*) to list, add,
+ * the integration's websocket API (optimum_watt/*) to list, add,
  * edit, reorder and delete devices, and receives live state pushes via a
  * subscription — the card itself carries no device configuration.
  */
@@ -44,7 +44,7 @@ function escapeHtml(str) {
   }[c]));
 }
 
-class WattixCard extends HTMLElement {
+class OptimumWattCard extends HTMLElement {
   setConfig(config) {
     this._config = config || {};
     this._built = false;
@@ -94,7 +94,7 @@ class WattixCard extends HTMLElement {
     }
     try {
       const entries = await this._hass.callWS({ type: "config_entries/get" });
-      const match = entries.find((e) => e.domain === "wattix");
+      const match = entries.find((e) => e.domain === "optimum_watt");
       if (match) this._entryId = match.entry_id;
     } catch (err) {
       // ignore, handled by the "not configured" empty state below
@@ -105,7 +105,7 @@ class WattixCard extends HTMLElement {
     if (!this._hass || this._subscribed) return;
     await this._ensureEntryId();
     if (!this._entryId) {
-      this._renderError("Keine Wattix-Instanz gefunden.");
+      this._renderError("Keine Optimum-Watt-Instanz gefunden.");
       return;
     }
     this._subscribed = true;
@@ -114,7 +114,7 @@ class WattixCard extends HTMLElement {
         this._latestState = state;
         this._render();
       },
-      { type: "wattix/subscribe", entry_id: this._entryId }
+      { type: "optimum_watt/subscribe", entry_id: this._entryId }
     );
   }
 
@@ -135,7 +135,7 @@ class WattixCard extends HTMLElement {
     // Optimistic: reflect the click instantly, the next push confirms it.
     this._latestState.auto_mode = enabled;
     this._render();
-    this._callWS({ type: "wattix/set_auto_mode", enabled });
+    this._callWS({ type: "optimum_watt/set_auto_mode", enabled });
   }
 
   _setMode(deviceId, mode) {
@@ -152,7 +152,7 @@ class WattixCard extends HTMLElement {
       else device.status = device.active ? "auto_on" : "auto_off";
       this._render();
     }
-    this._callWS({ type: "wattix/update_device", device_id: deviceId, mode });
+    this._callWS({ type: "optimum_watt/update_device", device_id: deviceId, mode });
   }
 
   _moveDevice(deviceId, direction) {
@@ -161,12 +161,12 @@ class WattixCard extends HTMLElement {
     const swapIdx = idx + direction;
     if (swapIdx < 0 || swapIdx >= ids.length) return;
     [ids[idx], ids[swapIdx]] = [ids[swapIdx], ids[idx]];
-    this._callWS({ type: "wattix/reorder_devices", device_ids: ids });
+    this._callWS({ type: "optimum_watt/reorder_devices", device_ids: ids });
   }
 
   _deleteDevice(deviceId, name) {
     if (!window.confirm(`Gerät "${name}" wirklich löschen?`)) return;
-    this._callWS({ type: "wattix/remove_device", device_id: deviceId });
+    this._callWS({ type: "optimum_watt/remove_device", device_id: deviceId });
   }
 
   _openAdd() {
@@ -244,9 +244,9 @@ class WattixCard extends HTMLElement {
       return;
     }
     if (this._addingNew) {
-      this._callWS({ type: "wattix/add_device", ...payload });
+      this._callWS({ type: "optimum_watt/add_device", ...payload });
     } else {
-      this._callWS({ type: "wattix/update_device", device_id: this._editingId, ...payload });
+      this._callWS({ type: "optimum_watt/update_device", device_id: this._editingId, ...payload });
     }
     this._cancelForm();
   }
@@ -318,7 +318,7 @@ class WattixCard extends HTMLElement {
     const titleHtml = this._config.title
       ? `<div class="em-title">${escapeHtml(this._config.title)}</div>`
       : `
-        <div class="em-logo" aria-label="Wattix">
+        <div class="em-logo" aria-label="Optimum Watt">
           <svg class="em-logo-mark" viewBox="0 0 100 100" role="img" aria-hidden="true">
             <defs>
               <linearGradient id="em-logo-wave" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -329,7 +329,7 @@ class WattixCard extends HTMLElement {
             <rect width="100" height="100" rx="20" fill="#1C2126"/>
             <path d="M13.50 29.00 L25.50 75.00 L37.00 44.00 L48.50 75.00 L58.50 29.00 L58.78 28.28 L59.05 27.57 L59.33 26.88 L59.61 26.21 L59.89 25.58 L60.16 24.99 L60.44 24.45 L60.72 23.95 L61.00 23.50 L61.27 23.11 L61.55 22.78 L61.83 22.51 L62.10 22.30 L62.38 22.16 L62.66 22.09 L62.94 22.08 L63.21 22.14 L63.49 22.26 L63.77 22.45 L64.05 22.69 L64.32 22.99 L64.60 23.34 L64.88 23.75 L65.15 24.19 L65.43 24.68 L65.71 25.21 L65.99 25.76 L66.26 26.34 L66.54 26.94 L66.82 27.55 L67.10 28.17 L67.37 28.78 L67.65 29.40 L67.93 30.00 L68.20 30.58 L68.48 31.15 L68.76 31.68 L69.04 32.19 L69.31 32.66 L69.59 33.09 L69.87 33.47 L70.15 33.81 L70.42 34.10 L70.70 34.34 L70.98 34.52 L71.25 34.65 L71.53 34.73 L71.81 34.75 L72.09 34.71 L72.36 34.62 L72.64 34.48 L72.92 34.29 L73.20 34.06 L73.47 33.77 L73.75 33.45 L74.03 33.09 L74.30 32.69 L74.58 32.27 L74.86 31.82 L75.14 31.35 L75.41 30.86 L75.69 30.36 L75.97 29.86 L76.25 29.35 L76.52 28.85 L76.80 28.36 L77.08 27.88 L77.35 27.42 L77.63 26.98 L77.91 26.56 L78.19 26.18 L78.46 25.82 L78.74 25.51 L79.02 25.23 L79.30 24.98 L79.57 24.79 L79.85 24.63 L80.13 24.52 L80.40 24.45 L80.68 24.43 L80.96 24.45 L81.24 24.51 L81.51 24.61 L81.79 24.76 L82.07 24.94 L82.35 25.16 L82.62 25.41 L82.90 25.69 L83.18 25.99 L83.45 26.32 L83.73 26.67 L84.01 27.04 L84.29 27.42 L84.56 27.81 L84.84 28.20 L85.12 28.59 L85.40 28.98 L85.67 29.36 L85.95 29.73 L86.23 30.09 L86.50 30.43 L86.78 30.75 L87.06 31.05 L87.34 31.32 L87.61 31.57 L87.89 31.78 L88.17 31.97 L88.45 32.12 L88.72 32.24 L89.00 32.33" fill="none" stroke="url(#em-logo-wave)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
-          <span class="em-logo-word">Wattix</span>
+          <span class="em-logo-word">Optimum Watt</span>
         </div>
       `;
 
@@ -417,7 +417,7 @@ class WattixCard extends HTMLElement {
     const sensor_timeout_s = raw !== "" && minutes > 0 ? Math.round(minutes * 60) : 0;
     this._els.settingsSave.disabled = true;
     try {
-      await this._callWS({ type: "wattix/set_settings", sensor_timeout_s });
+      await this._callWS({ type: "optimum_watt/set_settings", sensor_timeout_s });
       this._showSettingsFeedback("Gespeichert ✓", false);
     } catch (err) {
       this._showSettingsFeedback("Fehler beim Speichern", true);
@@ -523,7 +523,7 @@ class WattixCard extends HTMLElement {
         <button data-mode="auto" class="${device.mode === "auto" ? "active" : ""}">Auto</button>
         <button data-mode="on" class="${device.mode === "on" ? "active" : ""}">An</button>
         <button data-mode="off" class="${device.mode === "off" ? "active" : ""}">Aus</button>
-        <button data-mode="disabled" class="${device.mode === "disabled" ? "active" : ""}" title="Wattix fasst diesen Schalter nicht an">Regelung aus</button>
+        <button data-mode="disabled" class="${device.mode === "disabled" ? "active" : ""}" title="Optimum Watt fasst diesen Schalter nicht an">Regelung aus</button>
       </div>
       <button class="em-icon-btn" data-action="edit" title="Bearbeiten">✎</button>
       <button class="em-icon-btn" data-action="delete" title="Löschen">🗑</button>
@@ -584,7 +584,7 @@ class WattixCard extends HTMLElement {
             <input type="time" id="em-f-min-runtime-deadline" value="${escapeHtml(d.min_runtime_deadline)}" />
           </div>
         </div>
-        <p class="em-form-hint">Wird die Mindestlaufzeit sonst nicht erreicht, schaltet Wattix notfalls auch ohne Überschuss ein, rechtzeitig vor der Uhrzeit.</p>
+        <p class="em-form-hint">Wird die Mindestlaufzeit sonst nicht erreicht, schaltet Optimum Watt notfalls auch ohne Überschuss ein, rechtzeitig vor der Uhrzeit.</p>
         <div class="em-form-row" style="margin-top: 8px;">
           <label>Mindestlaufzeit pro Aktivierung (min)</label>
           <input type="number" id="em-f-min-on-duration" value="${escapeHtml(d.min_on_duration_min)}" min="0" step="1" placeholder="leer = aus" />
@@ -644,24 +644,24 @@ class WattixCard extends HTMLElement {
   }
 
   static getStubConfig() {
-    return { type: "custom:wattix-card" };
+    return { type: "custom:optimum-watt-card" };
   }
 }
 
-customElements.define("wattix-card", WattixCard);
+customElements.define("optimum-watt-card", OptimumWattCard);
 
 window.customCards = window.customCards || [];
 window.customCards.push({
-  type: "wattix-card",
-  name: "Wattix",
+  type: "optimum-watt-card",
+  name: "Optimum Watt",
   description: "PV-Überschuss-Kaskadensteuerung: Geräte anlegen, priorisieren und live steuern.",
 });
 
 /**
- * Full-page wrapper around wattix-card, used as the sidebar panel so the
+ * Full-page wrapper around optimum-watt-card, used as the sidebar panel so the
  * interface is reachable with a single click without building a dashboard.
  */
-class WattixPanel extends HTMLElement {
+class OptimumWattPanel extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     if (!this._card) {
@@ -698,7 +698,7 @@ class WattixPanel extends HTMLElement {
       wrap.style.margin = "0 auto";
       wrap.style.padding = "0 16px 16px";
 
-      this._card = document.createElement("wattix-card");
+      this._card = document.createElement("optimum-watt-card");
       this._card.setConfig({});
       wrap.appendChild(this._card);
       this.appendChild(header);
@@ -714,4 +714,4 @@ class WattixPanel extends HTMLElement {
   set route(route) {}
 }
 
-customElements.define("wattix-panel", WattixPanel);
+customElements.define("optimum-watt-panel", OptimumWattPanel);

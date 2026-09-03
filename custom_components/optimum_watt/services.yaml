@@ -3,12 +3,12 @@ add_device:
   description: Fügt ein neues, per PV-Überschuss gesteuertes Gerät hinzu (wird ans Ende der Prioritätsliste angehängt).
   fields:
     entry_id:
-      name: Wattix
+      name: Optimum Watt
       description: Die Instanz, zu der das Gerät hinzugefügt werden soll.
       required: true
       selector:
         config_entry:
-          integration: wattix
+          integration: optimum_watt
     name:
       name: Name
       description: Anzeigename des Geräts.
@@ -70,7 +70,7 @@ add_device:
           mode: box
     min_runtime_s:
       name: Mindestlaufzeit pro Tag
-      description: Sekunden, die das Gerät pro Tag mindestens laufen soll. Wird die Zeit sonst nicht erreicht, schaltet Wattix das Gerät notfalls auch ohne Überschuss ein, rechtzeitig vor der Deadline. Zusammen mit min_runtime_deadline angeben.
+      description: Sekunden, die das Gerät pro Tag mindestens laufen soll. Wird die Zeit sonst nicht erreicht, schaltet Optimum Watt das Gerät notfalls auch ohne Überschuss ein, rechtzeitig vor der Deadline. Zusammen mit min_runtime_deadline angeben.
       required: false
       selector:
         number:
@@ -103,12 +103,12 @@ remove_device:
   description: Entfernt ein Gerät aus der Kaskadensteuerung.
   fields:
     entry_id:
-      name: Wattix
+      name: Optimum Watt
       description: Die betroffene Instanz.
       required: true
       selector:
         config_entry:
-          integration: wattix
+          integration: optimum_watt
     device_id:
       name: Geräte-ID
       description: Die ID des zu entfernenden Geräts (siehe Karte oder list_devices).
@@ -121,12 +121,12 @@ set_device_mode:
   description: Erzwingt Automatik, An oder Aus für ein einzelnes Gerät.
   fields:
     entry_id:
-      name: Wattix
+      name: Optimum Watt
       description: Die betroffene Instanz.
       required: true
       selector:
         config_entry:
-          integration: wattix
+          integration: optimum_watt
     device_id:
       name: Geräte-ID
       description: Die ID des betroffenen Geräts.
@@ -135,7 +135,7 @@ set_device_mode:
         text:
     mode:
       name: Modus
-      description: auto = Kaskadensteuerung, on = dauerhaft an, off = dauerhaft aus, disabled = Regelung aus (Wattix fasst den Schalter nicht an).
+      description: auto = Kaskadensteuerung, on = dauerhaft an, off = dauerhaft aus, disabled = Regelung aus (Optimum Watt fasst den Schalter nicht an).
       required: true
       selector:
         select:
@@ -150,12 +150,12 @@ set_auto_mode:
   description: Schaltet die gesamte Kaskadensteuerung einer Instanz ein oder aus.
   fields:
     entry_id:
-      name: Wattix
+      name: Optimum Watt
       description: Die betroffene Instanz.
       required: true
       selector:
         config_entry:
-          integration: wattix
+          integration: optimum_watt
     enabled:
       name: Aktiv
       description: true = Automatik an, false = Automatik aus.

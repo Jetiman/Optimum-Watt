@@ -1,13 +1,13 @@
 {
-  "domain": "wattix",
-  "name": "Wattix",
+  "domain": "optimum_watt",
+  "name": "Optimum Watt",
   "codeowners": ["@jetiman"],
   "config_flow": true,
   "dependencies": ["http", "frontend", "websocket_api", "panel_custom"],
-  "documentation": "https://github.com/jetiman/wattix",
+  "documentation": "https://github.com/Jetiman/optimum-watt",
   "integration_type": "hub",
   "iot_class": "local_polling",
-  "issue_tracker": "https://github.com/jetiman/wattix/issues",
+  "issue_tracker": "https://github.com/Jetiman/optimum-watt/issues",
   "requirements": [],
   "version": "0.2.0"
 }

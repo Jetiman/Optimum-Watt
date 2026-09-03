@@ -1,9 +1,9 @@
-"""Constants for the Wattix integration."""
+"""Constants for the Optimum Watt integration."""
 from __future__ import annotations
 
 from datetime import timedelta
 
-DOMAIN = "wattix"
+DOMAIN = "optimum_watt"
 
 # Config entry data keys
 CONF_GRID_POWER_ENTITY = "grid_power_entity"
@@ -38,7 +38,7 @@ DEFAULT_SENSOR_TIMEOUT_S = 0
 MODE_AUTO = "auto"
 MODE_ON = "on"
 MODE_OFF = "off"
-MODE_DISABLED = "disabled"  # "Regelung aus": Wattix does not touch this device at all
+MODE_DISABLED = "disabled"  # "Regelung aus": Optimum Watt does not touch this device at all
 DEVICE_MODES = [MODE_AUTO, MODE_ON, MODE_OFF, MODE_DISABLED]
 
 PLATFORMS = ["sensor", "switch"]

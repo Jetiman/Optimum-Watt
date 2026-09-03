@@ -1,4 +1,4 @@
-"""WebSocket API used by the Wattix dashboard card.
+"""WebSocket API used by the Optimum Watt dashboard card.
 
 All device management (add/edit/remove/reorder) happens through these
 commands so the card can offer a live, app-like interface without round
@@ -14,7 +14,7 @@ from homeassistant.components import websocket_api
 from homeassistant.core import HomeAssistant, callback
 
 from .const import DOMAIN, MODE_AUTO, MODE_DISABLED, MODE_OFF, MODE_ON
-from .coordinator import WattixCoordinator
+from .coordinator import OptimumWattCoordinator
 
 # Local "HH:MM" time of day, e.g. "19:00" - the deadline for a device's
 # daily minimum runtime. The card always sends this field, using "" to mean
@@ -24,13 +24,13 @@ DEADLINE_SCHEMA = vol.Any(vol.Match(r"^([01]\d|2[0-3]):[0-5]\d$"), "")
 
 def _get_coordinator(
     hass: HomeAssistant, entry_id: str
-) -> WattixCoordinator | None:
+) -> OptimumWattCoordinator | None:
     return hass.data.get(DOMAIN, {}).get(entry_id)
 
 
 @websocket_api.websocket_command(
     {
-        vol.Required("type"): "wattix/list_devices",
+        vol.Required("type"): "optimum_watt/list_devices",
         vol.Required("entry_id"): str,
     }
 )
@@ -45,7 +45,7 @@ async def ws_list_devices(hass, connection, msg):
 
 @websocket_api.websocket_command(
     {
-        vol.Required("type"): "wattix/add_device",
+        vol.Required("type"): "optimum_watt/add_device",
         vol.Required("entry_id"): str,
         vol.Required("name"): str,
         vol.Required("entity_id"): str,
@@ -81,7 +81,7 @@ async def ws_add_device(hass, connection, msg):
 
 @websocket_api.websocket_command(
     {
-        vol.Required("type"): "wattix/update_device",
+        vol.Required("type"): "optimum_watt/update_device",
         vol.Required("entry_id"): str,
         vol.Required("device_id"): str,
         vol.Optional("name"): str,
@@ -118,7 +118,7 @@ async def ws_update_device(hass, connection, msg):
 
 @websocket_api.websocket_command(
     {
-        vol.Required("type"): "wattix/remove_device",
+        vol.Required("type"): "optimum_watt/remove_device",
         vol.Required("entry_id"): str,
         vol.Required("device_id"): str,
     }
@@ -140,7 +140,7 @@ async def ws_remove_device(hass, connection, msg):
 
 @websocket_api.websocket_command(
     {
-        vol.Required("type"): "wattix/reorder_devices",
+        vol.Required("type"): "optimum_watt/reorder_devices",
         vol.Required("entry_id"): str,
         vol.Required("device_ids"): [str],
     }
@@ -164,7 +164,7 @@ async def ws_reorder_devices(hass, connection, msg):
 
 @websocket_api.websocket_command(
     {
-        vol.Required("type"): "wattix/set_auto_mode",
+        vol.Required("type"): "optimum_watt/set_auto_mode",
         vol.Required("entry_id"): str,
         vol.Required("enabled"): bool,
     }
@@ -182,7 +182,7 @@ async def ws_set_auto_mode(hass, connection, msg):
 
 @websocket_api.websocket_command(
     {
-        vol.Required("type"): "wattix/set_settings",
+        vol.Required("type"): "optimum_watt/set_settings",
         vol.Required("entry_id"): str,
         vol.Optional("sensor_timeout_s"): vol.Coerce(int),
     }
@@ -201,7 +201,7 @@ async def ws_set_settings(hass, connection, msg):
 
 @websocket_api.websocket_command(
     {
-        vol.Required("type"): "wattix/subscribe",
+        vol.Required("type"): "optimum_watt/subscribe",
         vol.Required("entry_id"): str,
     }
 )
@@ -225,7 +225,7 @@ async def ws_subscribe(hass, connection, msg):
 
 
 def async_register_websocket_commands(hass: HomeAssistant) -> None:
-    """Register all wattix/* websocket commands, once per hass instance."""
+    """Register all optimum_watt/* websocket commands, once per hass instance."""
     websocket_api.async_register_command(hass, ws_list_devices)
     websocket_api.async_register_command(hass, ws_add_device)
     websocket_api.async_register_command(hass, ws_update_device)

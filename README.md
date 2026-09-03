@@ -1,6 +1,6 @@
-<p align="center"><img src="assets/wattix-logo.svg" width="320" alt="Wattix"></p>
+<p align="center"><img src="assets/optimum-watt-logo-ow.svg" width="320" alt="Optimum Watt"></p>
 
-# Wattix – Energie intelligent steuern
+# Optimum Watt – Energie intelligent steuern
 
 Eine generische PV-Überschusssteuerung für Home Assistant. Statt fester
 Heizstufen legst du beliebige Geräte (z. B. Relais eines Shelly 4PM) direkt
@@ -27,7 +27,7 @@ Nach der Einrichtung hinterlegst du nur einen Sensor, der die aktuelle
 - **Priorität** ergibt sich aus der Reihenfolge der Geräteliste (per
   Pfeiltasten verschiebbar): Das oberste Gerät schaltet zuerst ein und
   zuletzt wieder ab (LIFO – wie ein Wasserstand, der auf- und abfüllt).
-  Fällt der Überschuss komplett weg, schaltet Wattix die aktiven Geräte
+  Fällt der Überschuss komplett weg, schaltet Optimum Watt die aktiven Geräte
   nacheinander ab statt alle gleichzeitig – zwischen zwei Abschaltungen
   liegen mindestens 10 Sekunden. Reicht der verbleibende Überschuss von
   vornherein für mehrere Geräte nicht mehr, zählen auch deren
@@ -46,7 +46,7 @@ Nach der Einrichtung hinterlegst du nur einen Sensor, der die aktuelle
   schaltet die gesamte Kaskade ein/aus.
 - Optional (unter „Erweitert") eine **Mindestlaufzeit pro Tag** mit
   Uhrzeit: Hat ein Gerät bis zu dieser Uhrzeit die eingestellte Laufzeit
-  noch nicht erreicht, schaltet Wattix es rechtzeitig davor auch **ohne
+  noch nicht erreicht, schaltet Optimum Watt es rechtzeitig davor auch **ohne
   Überschuss** ein, bis das Tagesziel erfüllt ist. Beispiel: Poolpumpe,
   2 h Mindestlaufzeit, Deadline 19:00 – hat sie um 17:00 erst 30 Minuten
   gelaufen, schaltet sie spätestens um 17:30 zwangsweise ein, damit die
@@ -58,7 +58,7 @@ Nach der Einrichtung hinterlegst du nur einen Sensor, der die aktuelle
   ständig kurz an- und wieder ausgeschaltet werden sollen (z. B. eine Pumpe).
 - Unten in der Karte gibt es ein ausklappbares **Einstellungen**-Feld mit
   einem **Sensor-Timeout** (Minuten, leer = aus): Kommt vom Einspeise-Sensor
-  so lange kein neuer Wert (z. B. weil er ausgefallen ist), schaltet Wattix
+  so lange kein neuer Wert (z. B. weil er ausgefallen ist), schaltet Optimum Watt
   sicherheitshalber alle aktiven Geräte (außer „Regelung aus") nacheinander
   im 10-Sekunden-Takt ab – unabhängig vom Automatik-Schalter. Solange das
   der Fall ist, zeigt die Karte oben eine rote Meldung an.
@@ -66,7 +66,7 @@ Nach der Einrichtung hinterlegst du nur einen Sensor, der die aktuelle
 Alle Änderungen (Gerät hinzufügen/bearbeiten/löschen/verschieben) wirken
 sofort – kein Neustart, kein YAML.
 
-Die Integration bringt ihr Marken-Icon selbst mit (`custom_components/wattix/brand/`)
+Die Integration bringt ihr Marken-Icon selbst mit (`custom_components/optimum_watt/brand/`)
 und wird ab Home Assistant 2026.3.0 automatisch mit eigenem Icon statt eines
 Platzhalters angezeigt – ganz ohne separate Einreichung.
 
@@ -74,8 +74,8 @@ Platzhalters angezeigt – ganz ohne separate Einreichung.
 
 1. HACS → Integrationen → Menü (⋮) → *Benutzerdefinierte Repositories*.
 2. Repository-URL hinzufügen, Kategorie **Integration**.
-3. „Wattix" installieren und Home Assistant neu starten.
-4. Einstellungen → Geräte & Dienste → Integration hinzufügen → „Wattix".
+3. „Optimum Watt" installieren und Home Assistant neu starten.
+4. Einstellungen → Geräte & Dienste → Integration hinzufügen → „Optimum Watt".
 
 ## Einrichtung
 
@@ -90,7 +90,7 @@ Das war's – Geräte fügst du danach im Interface hinzu.
 
 ## Sidebar-Button
 
-Nach der Einrichtung erscheint automatisch ein **„Wattix"-Eintrag in der
+Nach der Einrichtung erscheint automatisch ein **„Optimum Watt"-Eintrag in der
 linken Seitenleiste** (Icon ⚡) – ein Klick öffnet das Interface direkt,
 ganzflächig, ohne dass du dafür ein eigenes Dashboard anlegen musst.
 
@@ -102,17 +102,17 @@ die automatisch als Frontend-Ressource registriert wird. Füge sie zu einem
 Dashboard hinzu:
 
 ```yaml
-type: custom:wattix-card
+type: custom:optimum-watt-card
 ```
 
-Mehr braucht es nicht – die Karte findet deine Wattix-Instanz
+Mehr braucht es nicht – die Karte findet deine Optimum-Watt-Instanz
 automatisch. Optional lässt sich ein Titel setzen oder (bei mehreren
 Instanzen) die passende explizit auswählen:
 
 ```yaml
-type: custom:wattix-card
+type: custom:optimum-watt-card
 title: PV-Überschuss
-entry_id: 01H...   # zu finden in der URL unter Einstellungen → Geräte & Dienste → Wattix
+entry_id: 01H...   # zu finden in der URL unter Einstellungen → Geräte & Dienste → Optimum Watt
 ```
 
 Die Karte zeigt:
@@ -125,12 +125,12 @@ Die Karte zeigt:
   Leistungsbedarf, Verzögerungen, erweitert: Hysterese).
 
 <p align="center">
-  <img src="assets/screenshot-list.jpg" width="360" alt="Wattix Geräteliste">
+  <img src="assets/screenshot-list.jpg" width="360" alt="Optimum Watt Geräteliste">
 </p>
 
 ## Erzeugte Entitäten
 
-Pro Instanz wird ein Gerät „Wattix" mit zwei zusätzlichen
+Pro Instanz wird ein Gerät „Optimum Watt" mit zwei zusätzlichen
 Entitäten für Dashboards/Automatisierungen angelegt:
 
 | Entität | Domain | Beschreibung |
@@ -150,13 +150,13 @@ muss.
 Für Skripte und Automatisierungen stehen folgende Services bereit
 (Parameter siehe Dienste-Übersicht in Home Assistant):
 
-- `wattix.add_device`
-- `wattix.remove_device`
-- `wattix.set_device_mode` (`auto` / `on` / `off`)
-- `wattix.set_auto_mode`
+- `optimum_watt.add_device`
+- `optimum_watt.remove_device`
+- `optimum_watt.set_device_mode` (`auto` / `on` / `off`)
+- `optimum_watt.set_auto_mode`
 
 Die Geräte-ID (`device_id`) eines Geräts findest du in der Karte oder per
-Entwicklerwerkzeuge → WebSocket-Befehl `wattix/list_devices`
+Entwicklerwerkzeuge → WebSocket-Befehl `optimum_watt/list_devices`
 (mit der `entry_id` der jeweiligen Instanz).
 
 ## Beispiel: Shelly 4PM

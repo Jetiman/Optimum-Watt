@@ -1,4 +1,4 @@
-"""Aggregate status sensors for Wattix.
+"""Aggregate status sensors for Optimum Watt.
 
 Per-device state is not exposed as individual entities — it lives in the
 coordinator and is served to the dashboard card via the websocket API.
@@ -13,18 +13,18 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
-from .coordinator import WattixCoordinator
-from .entity import WattixEntity
+from .coordinator import OptimumWattCoordinator
+from .entity import OptimumWattEntity
 
 
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
-    coordinator: WattixCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator: OptimumWattCoordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_entities([SurplusSensor(coordinator), RegulatedDeviceCountSensor(coordinator)])
 
 
-class SurplusSensor(WattixEntity, SensorEntity):
+class SurplusSensor(OptimumWattEntity, SensorEntity):
     """Current grid feed-in surplus, normalized to positive = feed-in."""
 
     _attr_name = "Überschuss"
@@ -33,7 +33,7 @@ class SurplusSensor(WattixEntity, SensorEntity):
     _attr_native_unit_of_measurement = UnitOfPower.WATT
     _attr_icon = "mdi:transmission-tower-export"
 
-    def __init__(self, coordinator: WattixCoordinator) -> None:
+    def __init__(self, coordinator: OptimumWattCoordinator) -> None:
         super().__init__(coordinator)
         self._attr_unique_id = f"{coordinator.entry.entry_id}_surplus"
 
@@ -42,7 +42,7 @@ class SurplusSensor(WattixEntity, SensorEntity):
         return self.coordinator.current_power_w
 
 
-class RegulatedDeviceCountSensor(WattixEntity, SensorEntity):
+class RegulatedDeviceCountSensor(OptimumWattEntity, SensorEntity):
     """How many devices are under active cascade control (mode auto).
 
     Not how many are currently drawing power — a device waiting for more
@@ -53,7 +53,7 @@ class RegulatedDeviceCountSensor(WattixEntity, SensorEntity):
     _attr_icon = "mdi:auto-mode"
     _attr_state_class = SensorStateClass.MEASUREMENT
 
-    def __init__(self, coordinator: WattixCoordinator) -> None:
+    def __init__(self, coordinator: OptimumWattCoordinator) -> None:
         super().__init__(coordinator)
         self._attr_unique_id = f"{coordinator.entry.entry_id}_active_devices"
 

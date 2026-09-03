@@ -1,4 +1,4 @@
-"""Core cascade control logic for the Wattix integration.
+"""Core cascade control logic for the Optimum Watt integration.
 
 As long as enough power is being fed into the grid for a sustained period,
 devices are switched on one after another in priority order (list order).
@@ -165,7 +165,7 @@ class Device:
         )
 
 
-class WattixCoordinator(DataUpdateCoordinator[None]):
+class OptimumWattCoordinator(DataUpdateCoordinator[None]):
     """Coordinates surplus readings and drives the device cascade."""
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
@@ -377,7 +377,7 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
         ):
             return
         _LOGGER.warning(
-            "Wattix: grid power sensor %s stale for %ss, switching %s off as a safety fallback",
+            "Optimum Watt: grid power sensor %s stale for %ss, switching %s off as a safety fallback",
             self.grid_power_entity,
             self.sensor_timeout_s,
             candidates[0].entity_id,
@@ -595,7 +595,7 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
             device.catchup_active = True
             if not device.active:
                 _LOGGER.debug(
-                    "Wattix: forcing %s ON to meet daily minimum runtime before %s",
+                    "Optimum Watt: forcing %s ON to meet daily minimum runtime before %s",
                     device.entity_id,
                     device.min_runtime_deadline,
                 )
@@ -610,7 +610,7 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
         device.insufficient_since = None
         device.recovered_since = None
         device.last_on_at = now
-        _LOGGER.debug("Wattix: switching %s ON", device.entity_id)
+        _LOGGER.debug("Optimum Watt: switching %s ON", device.entity_id)
         await self.hass.services.async_call(
             "switch", "turn_on", {"entity_id": device.entity_id}, blocking=True
         )
@@ -626,7 +626,7 @@ class WattixCoordinator(DataUpdateCoordinator[None]):
         device.insufficient_since = None
         device.recovered_since = None
         device.catchup_active = False
-        _LOGGER.debug("Wattix: switching %s OFF", device.entity_id)
+        _LOGGER.debug("Optimum Watt: switching %s OFF", device.entity_id)
         await self.hass.services.async_call(
             "switch", "turn_off", {"entity_id": device.entity_id}, blocking=True
         )
