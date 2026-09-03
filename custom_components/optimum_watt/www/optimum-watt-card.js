@@ -321,9 +321,9 @@ class OptimumWattCard extends HTMLElement {
       ha-card { padding: 16px; }
       .em-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
       .em-title { font-size: 1.1em; font-weight: 500; }
-      .em-logo { display: flex; align-items: center; gap: 8px; }
-      .em-logo-mark { width: 26px; height: 26px; flex-shrink: 0; }
-      .em-logo-word { font-size: 1.15em; font-weight: 700; letter-spacing: -0.01em; color: var(--primary-text-color); }
+      .em-logo { display: flex; align-items: center; gap: 10px; }
+      .em-logo-mark { width: 44px; height: 44px; flex-shrink: 0; }
+      .em-logo-word { font-size: 1.3em; font-weight: 700; letter-spacing: -0.01em; color: var(--primary-text-color); }
       .em-header-right { display: flex; align-items: center; gap: 10px; }
       .em-active-count { color: var(--secondary-text-color); font-size: 0.9em; }
       .em-auto-toggle { cursor: pointer; }
