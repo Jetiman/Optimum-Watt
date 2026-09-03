@@ -1,0 +1,48 @@
+name: Beta Prerelease
+
+# Every push to the default branch overwrites a single rolling beta
+# pre-release, tagged v<manifest-version>-beta. Enable "Show beta versions"
+# for this repo in HACS to install it; use HACS "Redownload" to pull a
+# newer beta build (the tag string stays the same).
+#
+# Cut the real release separately by pushing a plain version tag, e.g.
+#   git tag v0.2.1 && git push origin v0.2.1   (see release.yml)
+
+on:
+  push:
+    branches: [optimum-watt]
+    paths:
+      - "custom_components/**"
+      - "hacs.json"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  beta:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Compute beta tag
+        id: t
+        run: echo "tag=v$(jq -r .version custom_components/optimum_watt/manifest.json)-beta" >> "$GITHUB_OUTPUT"
+
+      - name: Move the beta tag to this commit
+        run: |
+          git tag -f "${{ steps.t.outputs.tag }}"
+          git push -f origin "refs/tags/${{ steps.t.outputs.tag }}"
+
+      - name: Publish / overwrite the beta pre-release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.t.outputs.tag }}
+          name: Optimum Watt ${{ steps.t.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          prerelease: true
+          make_latest: false
+          body: |
+            Rolling beta build — replaced on every push to the default branch.
+
+            Latest commit: ${{ github.sha }}
