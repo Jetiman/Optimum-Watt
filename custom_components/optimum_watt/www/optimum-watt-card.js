@@ -379,6 +379,7 @@ class OptimumWattCard extends HTMLElement {
       .em-settings { margin-top: 14px; border-top: 1px solid var(--divider-color, #ddd); padding-top: 10px; }
       .em-settings summary { cursor: pointer; font-weight: 500; color: var(--primary-text-color); }
       .em-settings-feedback { font-size: 0.82em; align-self: center; margin-right: auto; }
+      .em-settings-version { font-size: 0.76em; color: var(--secondary-text-color); margin: 12px 0 0; text-align: right; }
     `;
 
     const titleHtml = this._config.title
@@ -443,6 +444,7 @@ class OptimumWattCard extends HTMLElement {
           <span class="em-settings-feedback" id="em-settings-feedback"></span>
           <button class="em-btn-primary" id="em-settings-save">Speichern</button>
         </div>
+        <p class="em-settings-version" id="em-settings-version"></p>
       </details>
     `;
 
@@ -465,6 +467,7 @@ class OptimumWattCard extends HTMLElement {
       settingsTimeout: card.querySelector("#em-settings-timeout"),
       settingsSave: card.querySelector("#em-settings-save"),
       settingsFeedback: card.querySelector("#em-settings-feedback"),
+      settingsVersion: card.querySelector("#em-settings-version"),
     };
 
     this._els.autoIcon.addEventListener("click", () => this._toggleAuto());
@@ -532,6 +535,10 @@ class OptimumWattCard extends HTMLElement {
         ? String(state.sensor_timeout_s / 60)
         : "";
     }
+
+    this._els.settingsVersion.textContent = state.version
+      ? `Optimum Watt v${state.version}`
+      : "";
 
     // Skip rebuilding the device list while a form is open, so a live push
     // (every few seconds) doesn't rip focus out of an input the user is

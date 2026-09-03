@@ -17,6 +17,7 @@ from typing import Any
 
 from homeassistant.core import HomeAssistant, State, callback
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.loader import async_get_integration
 from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
@@ -212,6 +213,7 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
         self.storage_soc_entity: str | None = entry.data.get(CONF_STORAGE_SOC_ENTITY)
 
         self.auto_mode: bool = True
+        self.version: str = ""  # integration version, filled in async_setup
         self.current_power_w: float | None = None
         # Raw PV production (W) and battery power, normalized so positive =
         # charging / negative = discharging. None while unconfigured.
@@ -239,6 +241,11 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
 
     async def async_setup(self) -> None:
         """Load persisted devices/settings and start listening to the grid power sensor."""
+        try:
+            self.version = str((await async_get_integration(self.hass, DOMAIN)).version or "")
+        except Exception:  # noqa: BLE001 - version is cosmetic, never fatal
+            self.version = ""
+
         stored = await self._store.async_load() or {}
         self.devices = [Device.from_storage(d) for d in stored.get("devices", [])]
         self.sensor_timeout_s = stored.get("settings", {}).get(
@@ -911,6 +918,7 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
         """Full serialized state, used by the websocket API and card."""
         return {
             "auto_mode": self.auto_mode,
+            "version": self.version,
             "surplus_w": self.current_power_w,
             "production_w": self.production_w,
             "storage_w": self.storage_w,
