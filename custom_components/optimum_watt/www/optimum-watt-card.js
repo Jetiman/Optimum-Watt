@@ -863,7 +863,7 @@ class OptimumWattPanel extends HTMLElement {
       const wrap = document.createElement("div");
       wrap.style.maxWidth = "680px";
       wrap.style.margin = "0 auto";
-      wrap.style.padding = "0 16px 16px";
+      wrap.style.padding = "24px 16px 16px";
 
       this._card = document.createElement("optimum-watt-card");
       this._card.setConfig({});
