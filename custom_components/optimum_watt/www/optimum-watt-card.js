@@ -536,8 +536,11 @@ class OptimumWattCard extends HTMLElement {
         : "";
     }
 
-    this._els.settingsVersion.textContent = state.version
-      ? `Optimum Watt v${state.version}`
+    const verParts = [];
+    if (state.version) verParts.push(`v${state.version}`);
+    if (state.build) verParts.push(`build ${state.build}`);
+    this._els.settingsVersion.textContent = verParts.length
+      ? `Optimum Watt ${verParts.join(" · ")}`
       : "";
 
     // Skip rebuilding the device list while a form is open, so a live push

@@ -9,10 +9,12 @@ doubles as the surplus threshold needed to switch it on.
 """
 from __future__ import annotations
 
+import hashlib
 import logging
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 from homeassistant.core import HomeAssistant, State, callback
@@ -53,6 +55,22 @@ _LOGGER = logging.getLogger(__name__)
 
 def _storage_key(entry_id: str) -> str:
     return f"{DOMAIN}_{entry_id}_devices"
+
+
+def _compute_build_hash() -> str:
+    """Short hash over this package's Python + card source.
+
+    Lets a specific build be identified in the UI even when the manifest
+    version string hasn't changed - e.g. between rolling beta pushes. Any
+    code change to a .py or .js file flips it.
+    """
+    pkg = Path(__file__).parent
+    digest = hashlib.sha256()
+    for path in sorted(pkg.rglob("*")):
+        if path.is_file() and path.suffix in (".py", ".js"):
+            digest.update(path.name.encode())
+            digest.update(path.read_bytes())
+    return digest.hexdigest()[:7]
 
 
 @dataclass
@@ -214,6 +232,7 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
 
         self.auto_mode: bool = True
         self.version: str = ""  # integration version, filled in async_setup
+        self.build: str = ""  # short source hash, filled in async_setup
         self.current_power_w: float | None = None
         # Raw PV production (W) and battery power, normalized so positive =
         # charging / negative = discharging. None while unconfigured.
@@ -245,6 +264,7 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
             self.version = str((await async_get_integration(self.hass, DOMAIN)).version or "")
         except Exception:  # noqa: BLE001 - version is cosmetic, never fatal
             self.version = ""
+        self.build = await self.hass.async_add_executor_job(_compute_build_hash)
 
         stored = await self._store.async_load() or {}
         self.devices = [Device.from_storage(d) for d in stored.get("devices", [])]
@@ -919,6 +939,7 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
         return {
             "auto_mode": self.auto_mode,
             "version": self.version,
+            "build": self.build,
             "surplus_w": self.current_power_w,
             "production_w": self.production_w,
             "storage_w": self.storage_w,
