@@ -96,6 +96,9 @@ class Device:
     deficit_since: datetime | None = None
     last_on_at: datetime | None = None
     catchup_active: bool = False  # forced on right now to meet min_runtime_s
+    # Last switch.turn_on/off service call for this device failed (switch
+    # entity unavailable or missing). Purely informational for the card.
+    switch_unreachable: bool = False
 
     # How long a running on/off timer has currently seen the *opposite*
     # condition (e.g. a battery/storage regulation blip briefly pushing the
@@ -162,6 +165,7 @@ class Device:
                 "remaining_seconds": remaining_seconds,
                 "runtime_today_s": runtime_today_s,
                 "catchup_active": self.catchup_active,
+                "switch_unreachable": self.switch_unreachable,
             }
         )
         return data
@@ -824,19 +828,46 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
         else:
             device.catchup_active = False
 
+    async def _call_switch(self, device: Device, action: str) -> bool:
+        """Call switch.turn_on / switch.turn_off for a device.
+
+        Returns False (and logs a warning) if the service call fails - e.g.
+        the switch entity is unavailable or missing. The caller must not
+        update its internal state in that case, and crucially the failure
+        must not bubble up: otherwise a single dead relay aborts the whole
+        cascade evaluation every tick and every other device freezes with a
+        stale status (stuck "switches in 0s") until the relay comes back.
+        """
+        _LOGGER.debug("Optimum Watt: switch.%s %s", action, device.entity_id)
+        try:
+            await self.hass.services.async_call(
+                "switch", action, {"entity_id": device.entity_id}, blocking=True
+            )
+        except Exception as err:  # noqa: BLE001 - HA raises many types here
+            _LOGGER.warning(
+                "Optimum Watt: could not switch.%s %s: %s",
+                action,
+                device.entity_id,
+                err,
+            )
+            device.switch_unreachable = True
+            return False
+        device.switch_unreachable = False
+        return True
+
     async def _turn_on(self, device: Device, now: datetime) -> None:
+        if not await self._call_switch(device, "turn_on"):
+            return
         device.active = True
         device.surplus_since = None
         device.deficit_since = None
         device.insufficient_since = None
         device.recovered_since = None
         device.last_on_at = now
-        _LOGGER.debug("Optimum Watt: switching %s ON", device.entity_id)
-        await self.hass.services.async_call(
-            "switch", "turn_on", {"entity_id": device.entity_id}, blocking=True
-        )
 
     async def _turn_off(self, device: Device) -> None:
+        if not await self._call_switch(device, "turn_off"):
+            return
         now = dt_util.utcnow()
         if device.last_on_at is not None:
             device.runtime_today_s += max((now - device.last_on_at).total_seconds(), 0)
@@ -847,10 +878,6 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
         device.insufficient_since = None
         device.recovered_since = None
         device.catchup_active = False
-        _LOGGER.debug("Optimum Watt: switching %s OFF", device.entity_id)
-        await self.hass.services.async_call(
-            "switch", "turn_off", {"entity_id": device.entity_id}, blocking=True
-        )
 
     def device_seconds_remaining(self, device: Device) -> int | None:
         """Seconds left until this device's pending on/off action fires.

@@ -345,6 +345,7 @@ class OptimumWattCard extends HTMLElement {
       .em-device.on { background: var(--success-color, #43a047); color: white; }
       .em-device.pending { background: var(--warning-color, #fb8c00); color: white; }
       .em-device.catchup { background: var(--info-color, #3b6fd4); color: white; }
+      .em-device.unreachable { background: var(--error-color, #db4437); color: white; }
       .em-device.disabled { opacity: 0.55; }
       .em-device ha-icon { --mdc-icon-size: 24px; flex-shrink: 0; }
       .em-device-order { display: flex; flex-direction: column; align-items: center; gap: 2px; }
@@ -574,6 +575,7 @@ class OptimumWattCard extends HTMLElement {
     el.className = "em-device";
     const pending = device.remaining_seconds !== null && device.remaining_seconds !== undefined;
     if (device.mode === "disabled") el.classList.add("disabled");
+    else if (device.switch_unreachable) el.classList.add("unreachable");
     else if (device.catchup_active) el.classList.add("catchup");
     else if (device.active) el.classList.add("on");
     else if (pending) el.classList.add("pending");
@@ -586,9 +588,13 @@ class OptimumWattCard extends HTMLElement {
     if (device.min_soc_percent) {
       sub += ` · ab ${Math.round(device.min_soc_percent)}% Speicher`;
     }
-    const remainingText = fmtSeconds(device.remaining_seconds);
-    if (remainingText) {
-      sub += device.active ? ` · schaltet in ${remainingText} ab` : ` · schaltet in ${remainingText} ein`;
+    if (device.switch_unreachable) {
+      sub += ` · ⚠ Schalter nicht erreichbar`;
+    } else {
+      const remainingText = fmtSeconds(device.remaining_seconds);
+      if (remainingText) {
+        sub += device.active ? ` · schaltet in ${remainingText} ab` : ` · schaltet in ${remainingText} ein`;
+      }
     }
     if (device.min_runtime_s) {
       sub += ` · ${fmtMinutes(device.runtime_today_s)}/${fmtMinutes(device.min_runtime_s)} min bis ${device.min_runtime_deadline}`;
