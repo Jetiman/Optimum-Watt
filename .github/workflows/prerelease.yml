@@ -1,0 +1,30 @@
+name: Auto Prerelease (Test)
+
+on:
+  push:
+    branches: [Test]
+    paths:
+      - "custom_components/wattix/**"
+      - "hacs.json"
+
+permissions:
+  contents: write
+
+jobs:
+  prerelease:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Read manifest version
+        id: version
+        run: echo "version=$(jq -r .version custom_components/wattix/manifest.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Create prerelease
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}-test-${{ github.run_number }}
+          name: Wattix v${{ steps.version.outputs.version }} (Test Build ${{ github.run_number }})
+          target_commitish: ${{ github.sha }}
+          generate_release_notes: true
+          prerelease: true
