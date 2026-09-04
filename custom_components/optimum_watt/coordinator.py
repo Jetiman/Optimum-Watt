@@ -36,6 +36,7 @@ from .const import (
     DEFAULT_HYSTERESIS_W,
     DEFAULT_ON_DELAY_S,
     DEFAULT_OFF_DELAY_S,
+    DEFAULT_MAX_GRID_CHARGE_W,
     DEFAULT_SENSOR_TIMEOUT_S,
     DEFAULT_THRESHOLD_BASIS,
     DOMAIN,
@@ -260,6 +261,9 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
         # Instance-level safety setting: shut every switch down (staggered)
         # if any configured power sensor stops reporting a fresh value. 0 = off.
         self.sensor_timeout_s: int = DEFAULT_SENSOR_TIMEOUT_S
+        # See DEFAULT_MAX_GRID_CHARGE_W. Guards the "surplus before storage"
+        # basis against counting grid-sourced battery charging as surplus.
+        self.max_grid_charge_w: int = DEFAULT_MAX_GRID_CHARGE_W
         self._power_last_seen: datetime | None = None
         self._production_last_seen: datetime | None = None
         self._storage_last_seen: datetime | None = None
@@ -281,9 +285,9 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
 
         stored = await self._store.async_load() or {}
         self.devices = [Device.from_storage(d) for d in stored.get("devices", [])]
-        self.sensor_timeout_s = stored.get("settings", {}).get(
-            "sensor_timeout_s", DEFAULT_SENSOR_TIMEOUT_S
-        )
+        settings = stored.get("settings", {})
+        self.sensor_timeout_s = settings.get("sensor_timeout_s", DEFAULT_SENSOR_TIMEOUT_S)
+        self.max_grid_charge_w = settings.get("max_grid_charge_w", DEFAULT_MAX_GRID_CHARGE_W)
 
         # Start the staleness clock at startup, even if the sensor's first
         # reading turns out invalid - a sensor that's broken from the start
@@ -422,11 +426,38 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
             return None
         return self.current_power_w + self.storage_w
 
+    @property
+    def grid_charge_w(self) -> float:
+        """How many watts of the battery's charging come from the grid.
+
+        When the battery charges (storage_w > 0) *and* the grid is
+        importing (current_power_w < 0), that overlap is grid power going
+        into the battery - not surplus.
+        """
+        if self.current_power_w is None or self.storage_w is None:
+            return 0.0
+        charging = max(self.storage_w, 0.0)
+        importing = max(-self.current_power_w, 0.0)
+        return min(charging, importing)
+
+    @property
+    def pre_storage_grid_blocked(self) -> bool:
+        """Whether the 'surplus before storage' basis is currently paused
+        because the battery is charging from the grid."""
+        return self.max_grid_charge_w > 0 and self.grid_charge_w > self.max_grid_charge_w
+
     def _basis_value(self, basis: str) -> float | None:
         if basis == THRESHOLD_BASIS_PRODUCTION:
             return self.production_w
         if basis == THRESHOLD_BASIS_SURPLUS_PRE_STORAGE:
-            return self.surplus_pre_storage_w
+            value = self.surplus_pre_storage_w
+            if value is None:
+                return None
+            if self.pre_storage_grid_blocked:
+                # Battery is grid-charging: its charge power isn't surplus,
+                # so devices on this basis must switch off, not stay on.
+                return -1_000_000.0
+            return value
         return self.current_power_w
 
     async def _async_update_data(self) -> None:
@@ -454,7 +485,10 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
         await self._store.async_save(
             {
                 "devices": [d.to_storage() for d in self.devices],
-                "settings": {"sensor_timeout_s": self.sensor_timeout_s},
+                "settings": {
+                    "sensor_timeout_s": self.sensor_timeout_s,
+                    "max_grid_charge_w": self.max_grid_charge_w,
+                },
             }
         )
 
@@ -548,8 +582,16 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
         self.auto_mode = enabled
         self._notify_and_reeval()
 
-    async def async_set_sensor_timeout(self, sensor_timeout_s: int) -> None:
-        self.sensor_timeout_s = max(int(sensor_timeout_s), 0)
+    async def async_set_settings(
+        self,
+        *,
+        sensor_timeout_s: int | None = None,
+        max_grid_charge_w: int | None = None,
+    ) -> None:
+        if sensor_timeout_s is not None:
+            self.sensor_timeout_s = max(int(sensor_timeout_s), 0)
+        if max_grid_charge_w is not None:
+            self.max_grid_charge_w = max(int(max_grid_charge_w), 0)
         await self._async_save_state()
         self._notify_and_reeval()
 
@@ -988,6 +1030,9 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
             "regulated_count": self.regulated_device_count,
             "sensor_timeout_s": self.sensor_timeout_s,
             "sensor_stale": self._is_sensor_stale(dt_util.utcnow()),
+            "max_grid_charge_w": self.max_grid_charge_w,
+            "grid_charge_w": self.grid_charge_w,
+            "pre_storage_grid_blocked": self.pre_storage_grid_blocked,
             "devices": [
                 d.to_dict(
                     self.device_seconds_remaining(d),

@@ -3,6 +3,23 @@
 Die Release-Beschreibung auf GitHub wird automatisch aus dem jeweiligen
 Abschnitt hier erzeugt (siehe `.github/workflows/release.yml`).
 
+## v0.3.1 – Netz-Ladung des Speichers zählt nicht als Überschuss
+
+### Behoben
+- **Basis „Überschuss vor Speicherladung" blieb an, wenn der Speicher aus
+  dem Netz lädt.** Lud die Batterie z. B. mit 6 kW, davon 5,9 kW aus dem
+  Netz, wurde das als Überschuss gewertet und die Geräte liefen weiter –
+  auf bezahltem Netzstrom. Jetzt wird der aus dem Netz stammende Anteil
+  der Speicherladung abgezogen.
+
+### Neu
+- Einstellung **„Max. Netz-Ladung des Speichers (W)"** (Standard 100).
+  Lädt der Speicher mehr als diesen Wert aus dem Netz, schalten Geräte
+  mit Basis „Überschuss vor Speicherladung" ab. `0` = aus (altes
+  Verhalten: jede Speicherladung zählt als Überschuss).
+- In der Karte steht bei den betroffenen Geräten dann „⏸ Speicher lädt
+  aus Netz".
+
 ## v0.3.0 – Info-Sensoren & Kartenverbesserungen
 
 ### Neu

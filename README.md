@@ -82,6 +82,11 @@ Nach der Einrichtung hinterlegst du nur einen Sensor, der die aktuelle
   sicherheitshalber alle aktiven Geräte (außer „Regelung aus") nacheinander
   im 10-Sekunden-Takt ab – unabhängig vom Automatik-Schalter. Solange das
   der Fall ist, zeigt die Karte oben eine rote Meldung an.
+- Im selben **Einstellungen**-Feld: **Max. Netz-Ladung des Speichers**
+  (W, Standard 100). Lädt der Speicher mehr als diesen Wert aus dem Netz,
+  ist die entsprechende Leistung kein Überschuss – Geräte mit Basis
+  „Überschuss vor Speicherladung" schalten dann ab (`0` = aus, jede
+  Speicherladung zählt als Überschuss).
 
 Alle Änderungen (Gerät hinzufügen/bearbeiten/löschen/verschieben) wirken
 sofort – kein Neustart, kein YAML.

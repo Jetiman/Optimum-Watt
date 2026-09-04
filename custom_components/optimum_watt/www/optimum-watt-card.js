@@ -449,6 +449,15 @@ class OptimumWattCard extends HTMLElement {
           Schalter (außer „Regelung aus") sicherheitshalber nacheinander im
           10-Sekunden-Takt abgeschaltet.
         </p>
+        <div class="em-form-row" style="margin-top: 8px;">
+          <label>Max. Netz-Ladung des Speichers (W)</label>
+          <input type="number" id="em-settings-grid-charge" min="0" step="10" placeholder="0 = aus" />
+        </div>
+        <p class="em-form-hint">
+          Lädt der Speicher mehr als diesen Wert aus dem Netz, wird das nicht als
+          Überschuss gewertet – Geräte mit Basis „Überschuss vor Speicherladung"
+          schalten dann ab. 0 = aus (jede Speicherladung zählt als Überschuss).
+        </p>
         <div class="em-form-actions">
           <span class="em-settings-feedback" id="em-settings-feedback"></span>
           <button class="em-btn-primary" id="em-settings-save">Speichern</button>
@@ -474,6 +483,7 @@ class OptimumWattCard extends HTMLElement {
       alert: card.querySelector("#em-alert"),
       alertText: card.querySelector("#em-alert-text"),
       settingsTimeout: card.querySelector("#em-settings-timeout"),
+      settingsGridCharge: card.querySelector("#em-settings-grid-charge"),
       settingsSave: card.querySelector("#em-settings-save"),
       settingsFeedback: card.querySelector("#em-settings-feedback"),
       settingsVersion: card.querySelector("#em-settings-version"),
@@ -498,9 +508,11 @@ class OptimumWattCard extends HTMLElement {
     const raw = this._els.settingsTimeout.value;
     const minutes = Number(raw);
     const sensor_timeout_s = raw !== "" && minutes > 0 ? Math.round(minutes * 60) : 0;
+    const gcRaw = this._els.settingsGridCharge.value;
+    const max_grid_charge_w = gcRaw !== "" && Number(gcRaw) > 0 ? Math.round(Number(gcRaw)) : 0;
     this._els.settingsSave.disabled = true;
     try {
-      await this._callWS({ type: "optimum_watt/set_settings", sensor_timeout_s });
+      await this._callWS({ type: "optimum_watt/set_settings", sensor_timeout_s, max_grid_charge_w });
       this._showSettingsFeedback("Gespeichert ✓", false);
     } catch (err) {
       this._showSettingsFeedback("Fehler beim Speichern", true);
@@ -542,6 +554,11 @@ class OptimumWattCard extends HTMLElement {
     if (document.activeElement !== this._els.settingsTimeout) {
       this._els.settingsTimeout.value = state.sensor_timeout_s
         ? String(state.sensor_timeout_s / 60)
+        : "";
+    }
+    if (document.activeElement !== this._els.settingsGridCharge) {
+      this._els.settingsGridCharge.value = state.max_grid_charge_w
+        ? String(state.max_grid_charge_w)
         : "";
     }
 
@@ -603,6 +620,13 @@ class OptimumWattCard extends HTMLElement {
     if (device.threshold_basis && device.threshold_basis !== "surplus") {
       const basisOpt = THRESHOLD_BASIS_OPTIONS.find((o) => o.value === device.threshold_basis);
       if (basisOpt) sub += ` · Basis: ${basisOpt.label}`;
+    }
+    if (
+      device.threshold_basis === "surplus_pre_storage" &&
+      this._latestState &&
+      this._latestState.pre_storage_grid_blocked
+    ) {
+      sub += ` · ⏸ Speicher lädt aus Netz`;
     }
     if (device.min_soc_percent) {
       sub += ` · ab ${Math.round(device.min_soc_percent)}% Speicher`;

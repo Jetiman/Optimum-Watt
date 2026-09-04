@@ -45,6 +45,13 @@ RESET_GRACE_S = 30
 # safety fallback for a stuck/dead sensor.
 DEFAULT_SENSOR_TIMEOUT_S = 0
 
+# Default instance-level setting for the "surplus before storage" basis:
+# if the battery is pulling more than this many watts from the grid to
+# charge, that charge power is not real surplus, so devices on that basis
+# are paused. 0 = off (treat all battery charging as available surplus,
+# the old behaviour).
+DEFAULT_MAX_GRID_CHARGE_W = 100
+
 # Device mode
 MODE_AUTO = "auto"
 MODE_ON = "on"
