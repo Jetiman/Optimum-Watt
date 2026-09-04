@@ -2,8 +2,12 @@ name: Release
 
 # A release is cut on demand by pushing a version tag that matches the
 # integration's manifest version, e.g.:
-#   git tag v0.2.0 && git push origin v0.2.0
-# workflow_dispatch releases the current manifest version.
+#   git tag v0.3.0 && git push origin v0.3.0
+#
+# The release title and notes come from the matching "## <tag> - ..."
+# section in CHANGELOG.md. workflow_dispatch re-publishes the current
+# manifest version - handy for fixing up notes of an already-tagged
+# release after editing the changelog.
 
 on:
   push:
@@ -35,11 +39,28 @@ jobs:
           fi
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
-      - name: Create release
+      - name: Build release notes from CHANGELOG.md
+        id: notes
+        run: |
+          tag="${{ steps.rel.outputs.tag }}"
+          title=$(grep -m1 -E "^## ${tag}( |\$)" CHANGELOG.md | sed 's/^## //')
+          body=$(awk -v h="## ${tag}" '
+            $0 == h || index($0, h " ") == 1 { grab=1; next }
+            grab && /^## / { exit }
+            grab { print }
+          ' CHANGELOG.md)
+          {
+            echo "title=${title:-Optimum Watt $tag}"
+            echo "body<<__EOF__"
+            if [ -n "$body" ]; then printf '%s\n' "$body"; else echo "Siehe Commit-Historie."; fi
+            echo "__EOF__"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.rel.outputs.tag }}
-          name: Optimum Watt ${{ steps.rel.outputs.tag }}
+          name: ${{ steps.notes.outputs.title }}
+          body: ${{ steps.notes.outputs.body }}
           target_commitish: ${{ github.sha }}
-          generate_release_notes: true
           make_latest: true
