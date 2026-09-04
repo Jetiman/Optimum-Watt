@@ -358,9 +358,8 @@ class OptimumWattCard extends HTMLElement {
       .em-device-main { flex: 1 1 140px; min-width: 140px; }
       .em-device-name { font-weight: 500; overflow-wrap: break-word; word-break: break-word; }
       .em-device-sub { font-size: 0.82em; opacity: 0.85; overflow-wrap: break-word; word-break: break-word; }
-      .em-device-info { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 3px; font-size: 0.8em; }
-      .em-info-item { opacity: 0.85; white-space: nowrap; }
-      .em-info-item b { font-weight: 600; }
+      .em-device-info { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 3px; font-size: 0.82em; }
+      .em-info-item { font-weight: 600; white-space: nowrap; }
       .em-modes { display: flex; flex-wrap: wrap; gap: 4px; flex-shrink: 0; margin-left: auto; }
       .em-modes button { border: none; border-radius: 6px; padding: 4px 7px; font-size: 0.72em; cursor: pointer; background: rgba(0,0,0,0.12); color: inherit; white-space: nowrap; }
       .em-modes button.active { background: rgba(255,255,255,0.9); color: #222; font-weight: 600; }
@@ -621,11 +620,9 @@ class OptimumWattCard extends HTMLElement {
     }
 
     const infoItems = (device.info_readings || []).map((r) => {
-      let label = r.name || r.entity_id;
-      if (device.name && label.startsWith(device.name + " ")) label = label.slice(device.name.length + 1);
       const bad = r.state === null || r.state === "unavailable" || r.state === "unknown";
       const val = bad ? "–" : `${r.state}${r.unit ? " " + r.unit : ""}`;
-      return `<span class="em-info-item">${escapeHtml(label)} <b>${escapeHtml(val)}</b></span>`;
+      return `<span class="em-info-item">${escapeHtml(val)}</span>`;
     });
     const infoHtml = infoItems.length ? `<div class="em-device-info">${infoItems.join("")}</div>` : "";
 
