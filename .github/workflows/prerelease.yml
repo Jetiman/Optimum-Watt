@@ -57,11 +57,10 @@ jobs:
           make_latest: false
           generate_release_notes: true
 
-      - name: Remove every older beta for this version
+      - name: Remove every other beta pre-release
         run: |
-          esc=$(printf '%s' "${{ steps.t.outputs.base }}" | sed 's/\./\\./g')
           gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName -q '.[].tagName' \
-            | grep -E "^${esc}-beta(\.|$)" \
+            | grep -E '\-beta' \
             | grep -vx "${{ steps.t.outputs.tag }}" \
             | while read -r old; do
                 echo "deleting $old"
