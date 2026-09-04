@@ -1,12 +1,14 @@
 name: Beta Prerelease
 
-# Every push to the default branch overwrites a single rolling beta
-# pre-release, tagged v<manifest-version>-beta. Enable "Show beta versions"
-# for this repo in HACS to install it; use HACS "Redownload" to pull a
-# newer beta build (the tag string stays the same).
+# Every push to the default branch publishes an incrementing beta
+# pre-release  v<manifest-version>-beta.<N>  and immediately deletes the
+# previous one, so:
+#   * HACS (with "Show beta versions" on) sees a new version each push and
+#     offers it as an update - a fixed tag never triggers that.
+#   * only ever ONE beta is visible in the releases list, not a stack.
 #
-# Cut the real release separately by pushing a plain version tag, e.g.
-#   git tag v0.2.1 && git push origin v0.2.1   (see release.yml)
+# The stable release is cut separately by pushing a plain version tag,
+# e.g.  git tag v0.2.1 && git push origin v0.2.1  (see release.yml).
 
 on:
   push:
@@ -22,19 +24,30 @@ permissions:
 jobs:
   beta:
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
-      - name: Compute beta tag
+      - name: Work out the next beta tag
         id: t
-        run: echo "tag=v$(jq -r .version custom_components/optimum_watt/manifest.json)-beta" >> "$GITHUB_OUTPUT"
-
-      - name: Move the beta tag to this commit
         run: |
-          git tag -f "${{ steps.t.outputs.tag }}"
-          git push -f origin "refs/tags/${{ steps.t.outputs.tag }}"
+          base="v$(jq -r .version custom_components/optimum_watt/manifest.json)"
+          last=$(git tag -l "${base}-beta.*" | sed 's/.*-beta\.//' | grep -E '^[0-9]+$' | sort -n | tail -1)
+          next=$(( ${last:-0} + 1 ))
+          {
+            echo "base=$base"
+            echo "tag=${base}-beta.${next}"
+          } >> "$GITHUB_OUTPUT"
 
-      - name: Publish / overwrite the beta pre-release
+      - name: Tag this commit
+        run: |
+          git tag "${{ steps.t.outputs.tag }}"
+          git push origin "refs/tags/${{ steps.t.outputs.tag }}"
+
+      - name: Publish the beta pre-release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.t.outputs.tag }}
@@ -42,7 +55,15 @@ jobs:
           target_commitish: ${{ github.sha }}
           prerelease: true
           make_latest: false
-          body: |
-            Rolling beta build — replaced on every push to the default branch.
+          generate_release_notes: true
 
-            Latest commit: ${{ github.sha }}
+      - name: Remove every older beta for this version
+        run: |
+          esc=$(printf '%s' "${{ steps.t.outputs.base }}" | sed 's/\./\\./g')
+          gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName -q '.[].tagName' \
+            | grep -E "^${esc}-beta(\.|$)" \
+            | grep -vx "${{ steps.t.outputs.tag }}" \
+            | while read -r old; do
+                echo "deleting $old"
+                gh release delete "$old" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag
+              done
