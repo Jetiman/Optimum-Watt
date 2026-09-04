@@ -118,6 +118,13 @@ add_device:
           step: 60
           unit_of_measurement: s
           mode: box
+    info_entities:
+      name: Info-Sensoren
+      description: Zusätzliche Entitäten, die nur zur Anzeige neben dem Gerät eingeblendet werden (z. B. Temperatur oder aktuelle Leistung). Keine Auswirkung auf die Regelung.
+      required: false
+      selector:
+        entity:
+          multiple: true
 
 remove_device:
   name: Gerät entfernen

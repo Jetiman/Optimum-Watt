@@ -12,7 +12,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -110,6 +110,11 @@ class Device:
     # the surplus disappears again right away.
     min_on_duration_s: int = 0
 
+    # Extra entities shown read-only next to this device on the card - e.g.
+    # a temperature or a live power sensor. Purely informational, never
+    # part of the cascade logic.
+    info_entities: list[str] = field(default_factory=list)
+
     active: bool = False
     surplus_since: datetime | None = None
     deficit_since: datetime | None = None
@@ -171,9 +176,15 @@ class Device:
             "runtime_today_s": self.runtime_today_s,
             "runtime_date": self.runtime_date,
             "min_on_duration_s": self.min_on_duration_s,
+            "info_entities": list(self.info_entities),
         }
 
-    def to_dict(self, remaining_seconds: int | None, runtime_today_s: float) -> dict[str, Any]:
+    def to_dict(
+        self,
+        remaining_seconds: int | None,
+        runtime_today_s: float,
+        info_readings: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
         data = self.to_storage()
         data.update(
             {
@@ -185,6 +196,7 @@ class Device:
                 "runtime_today_s": runtime_today_s,
                 "catchup_active": self.catchup_active,
                 "switch_unreachable": self.switch_unreachable,
+                "info_readings": info_readings or [],
             }
         )
         return data
@@ -207,6 +219,7 @@ class Device:
             runtime_today_s=data.get("runtime_today_s", 0.0),
             runtime_date=data.get("runtime_date"),
             min_on_duration_s=data.get("min_on_duration_s", 0),
+            info_entities=[str(e) for e in data.get("info_entities", []) if e],
         )
 
 
@@ -465,6 +478,7 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
         min_runtime_s: int | None = None,
         min_runtime_deadline: str | None = None,
         min_on_duration_s: int | None = None,
+        info_entities: list[str] | None = None,
     ) -> Device:
         device = Device(
             id=uuid.uuid4().hex[:8],
@@ -479,6 +493,7 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
             min_runtime_s=int(min_runtime_s) if min_runtime_s else 0,
             min_runtime_deadline=min_runtime_deadline or None,
             min_on_duration_s=int(min_on_duration_s) if min_on_duration_s else 0,
+            info_entities=[str(e) for e in (info_entities or []) if e],
         )
         self.devices.append(device)
         await self._async_save_state()
@@ -503,6 +518,8 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
         ):
             if key in fields and fields[key] is not None:
                 setattr(device, key, fields[key])
+        if "info_entities" in fields and fields["info_entities"] is not None:
+            device.info_entities = [str(e) for e in fields["info_entities"] if e]
         if "mode" in fields and fields["mode"] is not None:
             # Avoid a stale timer instantly firing if the device returns to auto later.
             device.surplus_since = None
@@ -924,6 +941,26 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
             return max(int(remaining), 0)
         return None
 
+    def _info_readings(self, device: Device) -> list[dict[str, Any]]:
+        """Resolve a device's info entities to current display values."""
+        readings: list[dict[str, Any]] = []
+        for entity_id in device.info_entities:
+            state = self.hass.states.get(entity_id)
+            if state is None:
+                readings.append(
+                    {"entity_id": entity_id, "name": entity_id, "state": None, "unit": None}
+                )
+                continue
+            readings.append(
+                {
+                    "entity_id": entity_id,
+                    "name": state.attributes.get("friendly_name") or entity_id,
+                    "state": state.state,
+                    "unit": state.attributes.get("unit_of_measurement"),
+                }
+            )
+        return readings
+
     @property
     def regulated_device_count(self) -> int:
         """How many devices are under active cascade control (mode auto).
@@ -952,7 +989,11 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
             "sensor_timeout_s": self.sensor_timeout_s,
             "sensor_stale": self._is_sensor_stale(dt_util.utcnow()),
             "devices": [
-                d.to_dict(self.device_seconds_remaining(d), self._effective_runtime_today_s(d))
+                d.to_dict(
+                    self.device_seconds_remaining(d),
+                    self._effective_runtime_today_s(d),
+                    self._info_readings(d),
+                )
                 for d in self.devices
             ],
         }

@@ -58,6 +58,7 @@ async def ws_list_devices(hass, connection, msg):
         vol.Optional("min_runtime_s"): vol.Coerce(int),
         vol.Optional("min_runtime_deadline"): DEADLINE_SCHEMA,
         vol.Optional("min_on_duration_s"): vol.Coerce(int),
+        vol.Optional("info_entities"): [str],
     }
 )
 @websocket_api.require_admin
@@ -79,6 +80,7 @@ async def ws_add_device(hass, connection, msg):
         min_runtime_s=msg.get("min_runtime_s"),
         min_runtime_deadline=msg.get("min_runtime_deadline"),
         min_on_duration_s=msg.get("min_on_duration_s"),
+        info_entities=msg.get("info_entities"),
     )
     connection.send_result(msg["id"], coordinator.state_dict())
 
@@ -100,6 +102,7 @@ async def ws_add_device(hass, connection, msg):
         vol.Optional("min_runtime_s"): vol.Coerce(int),
         vol.Optional("min_runtime_deadline"): DEADLINE_SCHEMA,
         vol.Optional("min_on_duration_s"): vol.Coerce(int),
+        vol.Optional("info_entities"): [str],
     }
 )
 @websocket_api.require_admin

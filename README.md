@@ -171,6 +171,10 @@ Die Karte zeigt:
 - einen „+ Gerät hinzufügen"-Button mit Formular (Name, Schalter,
   Leistungsbedarf, Verzögerungen, erweitert: Hysterese).
 
+Pro Gerät lassen sich optional **zusätzliche Sensoren** hinterlegen (z. B.
+Temperatur oder aktuelle Leistung). Sie werden nur als Info neben dem
+Gerät angezeigt und haben keinen Einfluss auf die Regelung.
+
 <p align="center">
   <img src="assets/screenshot-list.jpg" width="360" alt="Optimum Watt Geräteliste">
 </p>

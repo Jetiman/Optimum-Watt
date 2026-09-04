@@ -239,6 +239,7 @@ class OptimumWattCard extends HTMLElement {
       min_runtime_minutes: "",
       min_runtime_deadline: "",
       min_on_duration_min: "",
+      info_entities: [],
     };
     this._renderDevicesWithForm();
   }
@@ -258,6 +259,7 @@ class OptimumWattCard extends HTMLElement {
       min_runtime_minutes: device.min_runtime_s ? String(device.min_runtime_s / 60) : "",
       min_runtime_deadline: device.min_runtime_deadline || "",
       min_on_duration_min: device.min_on_duration_s ? String(device.min_on_duration_s / 60) : "",
+      info_entities: [...(device.info_entities || [])],
     };
     this._renderDevicesWithForm();
   }
@@ -289,6 +291,7 @@ class OptimumWattCard extends HTMLElement {
         d.min_on_duration_min !== "" && Number(d.min_on_duration_min) > 0
           ? Math.round(Number(d.min_on_duration_min) * 60)
           : 0,
+      info_entities: (d.info_entities || []).map((s) => (s || "").trim()).filter(Boolean),
     };
   }
 
@@ -355,6 +358,9 @@ class OptimumWattCard extends HTMLElement {
       .em-device-main { flex: 1 1 140px; min-width: 140px; }
       .em-device-name { font-weight: 500; overflow-wrap: break-word; word-break: break-word; }
       .em-device-sub { font-size: 0.82em; opacity: 0.85; overflow-wrap: break-word; word-break: break-word; }
+      .em-device-info { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 3px; font-size: 0.8em; }
+      .em-info-item { opacity: 0.85; white-space: nowrap; }
+      .em-info-item b { font-weight: 600; }
       .em-modes { display: flex; flex-wrap: wrap; gap: 4px; flex-shrink: 0; margin-left: auto; }
       .em-modes button { border: none; border-radius: 6px; padding: 4px 7px; font-size: 0.72em; cursor: pointer; background: rgba(0,0,0,0.12); color: inherit; white-space: nowrap; }
       .em-modes button.active { background: rgba(255,255,255,0.9); color: #222; font-weight: 600; }
@@ -370,6 +376,10 @@ class OptimumWattCard extends HTMLElement {
       .em-form-row input, .em-form-row select { border-radius: 6px; border: 1px solid var(--divider-color, #ccc); padding: 6px 8px; background: var(--card-background-color); color: var(--primary-text-color); width: 100%; box-sizing: border-box; min-width: 0; }
       .em-form { min-width: 0; }
       #em-f-entity-wrap, #em-f-entity-wrap ha-entity-picker { width: 100%; box-sizing: border-box; }
+      #em-f-sensors { display: flex; flex-direction: column; gap: 6px; }
+      .em-sensor-row { display: flex; gap: 6px; align-items: center; }
+      .em-sensor-row > *:first-child { flex: 1 1 auto; min-width: 0; }
+      .em-f-add-sensor { align-self: flex-start; padding: 4px 8px; font-size: 0.8em; }
       .em-form-advanced { margin-bottom: 10px; }
       .em-form-advanced summary { cursor: pointer; font-size: 0.85em; color: var(--secondary-text-color); }
       .em-form-hint { font-size: 0.78em; color: var(--secondary-text-color); margin: -4px 0 4px; }
@@ -610,6 +620,15 @@ class OptimumWattCard extends HTMLElement {
       sub += ` · ${fmtMinutes(device.runtime_today_s)}/${fmtMinutes(device.min_runtime_s)} min bis ${device.min_runtime_deadline}`;
     }
 
+    const infoItems = (device.info_readings || []).map((r) => {
+      let label = r.name || r.entity_id;
+      if (device.name && label.startsWith(device.name + " ")) label = label.slice(device.name.length + 1);
+      const bad = r.state === null || r.state === "unavailable" || r.state === "unknown";
+      const val = bad ? "–" : `${r.state}${r.unit ? " " + r.unit : ""}`;
+      return `<span class="em-info-item">${escapeHtml(label)} <b>${escapeHtml(val)}</b></span>`;
+    });
+    const infoHtml = infoItems.length ? `<div class="em-device-info">${infoItems.join("")}</div>` : "";
+
     const editingPriority = this._editingPriorityId === device.id;
     const numHtml = editingPriority
       ? `<input type="number" class="em-device-num-input" min="1" max="${total}" step="1" value="${idx + 1}" />`
@@ -625,6 +644,7 @@ class OptimumWattCard extends HTMLElement {
       <div class="em-device-main">
         <div class="em-device-name">${escapeHtml(device.name)}</div>
         <div class="em-device-sub">${escapeHtml(sub)}</div>
+        ${infoHtml}
       </div>
       <div class="em-modes">
         <button data-mode="auto" class="${device.mode === "auto" ? "active" : ""}">Auto</button>
@@ -674,6 +694,12 @@ class OptimumWattCard extends HTMLElement {
       <div class="em-form-row">
         <label>Schalter</label>
         <div id="em-f-entity-wrap"></div>
+      </div>
+      <div class="em-form-row">
+        <label>Zusätzliche Sensoren (optional) – z. B. Temperatur oder Leistung</label>
+        <div id="em-f-sensors"></div>
+        <button type="button" class="em-btn-secondary em-f-add-sensor" id="em-f-add-sensor">+ Sensor</button>
+        <p class="em-form-hint">Werden nur als Info neben dem Gerät angezeigt und beeinflussen die Regelung nicht.</p>
       </div>
       <div class="em-form-row">
         <label>Leistungsbedarf (W) – zugleich Einschaltschwelle</label>
@@ -774,7 +800,65 @@ class OptimumWattCard extends HTMLElement {
       entityWrap.appendChild(datalist);
     }
 
+    this._renderSensorPickers(wrap);
+    wrap.querySelector("#em-f-add-sensor").addEventListener("click", () => {
+      this._draft.info_entities = [...(this._draft.info_entities || []), ""];
+      this._renderSensorPickers(wrap);
+    });
+
     return wrap;
+  }
+
+  _renderSensorPickers(wrap) {
+    const host = wrap.querySelector("#em-f-sensors");
+    host.innerHTML = "";
+    const list = this._draft.info_entities || [];
+    const hasPicker = !!customElements.get("ha-entity-picker");
+    list.forEach((value, i) => {
+      const row = document.createElement("div");
+      row.className = "em-sensor-row";
+      if (hasPicker) {
+        const picker = document.createElement("ha-entity-picker");
+        picker.hass = this._hass;
+        picker.value = value || "";
+        picker.allowCustomEntity = true;
+        picker.addEventListener("value-changed", (e) => {
+          this._draft.info_entities[i] = e.detail.value || "";
+        });
+        row.appendChild(picker);
+      } else {
+        const input = document.createElement("input");
+        input.type = "text";
+        input.placeholder = "sensor.beispiel";
+        input.value = value || "";
+        input.setAttribute("list", "em-info-entities");
+        input.addEventListener("input", (e) => (this._draft.info_entities[i] = e.target.value));
+        row.appendChild(input);
+      }
+      const rm = document.createElement("button");
+      rm.type = "button";
+      rm.className = "em-icon-btn";
+      rm.textContent = "✕";
+      rm.title = "Sensor entfernen";
+      rm.addEventListener("click", () => {
+        this._draft.info_entities.splice(i, 1);
+        this._renderSensorPickers(wrap);
+      });
+      row.appendChild(rm);
+      host.appendChild(row);
+    });
+    if (!hasPicker && !wrap.querySelector("#em-info-entities")) {
+      const datalist = document.createElement("datalist");
+      datalist.id = "em-info-entities";
+      Object.keys(this._hass.states)
+        .filter((eid) => /^(sensor|number|binary_sensor|climate)\./.test(eid))
+        .forEach((eid) => {
+          const opt = document.createElement("option");
+          opt.value = eid;
+          datalist.appendChild(opt);
+        });
+      host.appendChild(datalist);
+    }
   }
 
   _renderBasisSelect(wrap) {
