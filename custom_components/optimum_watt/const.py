@@ -39,6 +39,14 @@ CASCADE_STAGGER_S = 10
 # almost-complete wait.
 RESET_GRACE_S = 30
 
+# Hard cap on a single switch.turn_on/turn_off service call. A slow or
+# unresponsive device (e.g. waiting on a cloud/MQTT round trip that never
+# acks) can otherwise hang that call forever - since the cascade evaluates
+# one tick at a time, that stalls the update for every device, not just the
+# unresponsive one, with everyone frozen on a stale status and no error ever
+# logged (nothing failed, it's just still waiting).
+SWITCH_CALL_TIMEOUT_S = 10
+
 # Default instance-level setting: 0 = disabled (opt-in). If > 0, all
 # switches get shut down (staggered by CASCADE_STAGGER_S) once the grid
 # power sensor hasn't reported a fresh value for this many seconds - a

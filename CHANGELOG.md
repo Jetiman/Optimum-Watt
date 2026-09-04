@@ -3,6 +3,22 @@
 Die Release-Beschreibung auf GitHub wird automatisch aus dem jeweiligen
 Abschnitt hier erzeugt (siehe `.github/workflows/release.yml`).
 
+## v0.3.2 – Hängender Schalter-Aufruf blockiert nicht mehr alles
+
+### Behoben
+- **Ein zäh antwortendes Gerät konnte die komplette Regelung dauerhaft
+  einfrieren.** Reagierte ein Schalter (z. B. ein WLAN-Relais nach einem
+  kurzen Netzwerk-Aussetzer) auf `switch.turn_on`/`turn_off` nicht mit
+  Erfolg oder Fehler, sondern gar nicht, wartete Optimum Watt endlos
+  darauf – ohne Fehlermeldung im Log, denn nichts ist fehlgeschlagen, es
+  hing nur fest. Alle Geräte blieben dabei auf ihrem letzten Stand
+  eingefroren, z. B. dauerhaft „schaltet in 0 s ein".
+  Schaltbefehle haben jetzt ein Zeitlimit (10 s); danach wird das Gerät
+  als „Schalter nicht erreichbar" markiert und die Regelung läuft für
+  alle anderen Geräte normal weiter.
+- Ein bereits hängender Zustand lässt sich auch ohne Update beheben:
+  Einstellungen → Geräte & Dienste → Optimum Watt → „Neu laden".
+
 ## v0.3.1 – Netz-Ladung des Speichers zählt nicht als Überschuss
 
 ### Behoben

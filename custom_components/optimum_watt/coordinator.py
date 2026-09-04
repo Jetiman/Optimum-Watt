@@ -9,6 +9,7 @@ doubles as the surplus threshold needed to switch it on.
 """
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import logging
 import uuid
@@ -27,6 +28,7 @@ import homeassistant.util.dt as dt_util
 
 from .const import (
     CASCADE_STAGGER_S,
+    SWITCH_CALL_TIMEOUT_S,
     CONF_GRID_POWER_ENTITY,
     CONF_INVERT,
     CONF_PV_PRODUCTION_ENTITY,
@@ -917,19 +919,24 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
     async def _call_switch(self, device: Device, action: str) -> bool:
         """Call switch.turn_on / switch.turn_off for a device.
 
-        Returns False (and logs a warning) if the service call fails - e.g.
-        the switch entity is unavailable or missing. The caller must not
-        update its internal state in that case, and crucially the failure
-        must not bubble up: otherwise a single dead relay aborts the whole
-        cascade evaluation every tick and every other device freezes with a
-        stale status (stuck "switches in 0s") until the relay comes back.
+        Returns False (and logs a warning) if the service call fails or
+        doesn't complete within SWITCH_CALL_TIMEOUT_S - e.g. the switch
+        entity is unavailable, missing, or a slow/unresponsive device never
+        acks. The caller must not update its internal state in that case,
+        and crucially neither failure mode may bubble up or block: a single
+        dead or hanging relay would otherwise stall the whole cascade
+        evaluation every tick, freezing every other device on a stale
+        status (stuck "switches in 0s") with no error ever logged, since as
+        far as that call is concerned nothing failed - it's just still
+        waiting.
         """
         _LOGGER.debug("Optimum Watt: switch.%s %s", action, device.entity_id)
         try:
-            await self.hass.services.async_call(
-                "switch", action, {"entity_id": device.entity_id}, blocking=True
-            )
-        except Exception as err:  # noqa: BLE001 - HA raises many types here
+            async with asyncio.timeout(SWITCH_CALL_TIMEOUT_S):
+                await self.hass.services.async_call(
+                    "switch", action, {"entity_id": device.entity_id}, blocking=True
+                )
+        except Exception as err:  # noqa: BLE001 - HA raises many types here, plus TimeoutError
             _LOGGER.warning(
                 "Optimum Watt: could not switch.%s %s: %s",
                 action,
