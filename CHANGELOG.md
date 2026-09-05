@@ -13,7 +13,12 @@ Abschnitt hier erzeugt (siehe `.github/workflows/release.yml`).
 - **Zusätzliche Sensoren**, **Schaltzeiten** und **Erweitert** sind
   eigene einklappbare Abschnitte mit Anzahl-Badge; sie öffnen sich beim
   Bearbeiten automatisch, wenn schon Einträge vorhanden sind.
+- **Mindest-Speicher-Ladestand** ist unter „Erweitert" gewandert.
 - Pflichtfelder mit `*` markiert, etwas mehr Luft, größere Eingabefelder.
+
+### Behoben
+- „Mindest-Speicher-Ladestand" ließ sich über 100 % hinaus eintragen –
+  wird jetzt auf 0–100 % begrenzt.
 
 ## v0.4.1 – Nicht nur `switch`-Entitäten
 
