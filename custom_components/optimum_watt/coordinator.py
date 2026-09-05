@@ -910,7 +910,14 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
         for device in self.devices:
             live_state = self.hass.states.get(device.entity_id)
             if live_state is None or live_state.state not in ("on", "off"):
+                # Can't read the relay this tick - flag it, but keep our last
+                # known active state so the card doesn't flicker.
+                device.switch_unreachable = True
                 continue
+            # We can see the relay again - clear any stale unreachable flag,
+            # even for devices we're currently just holding (never re-call
+            # _call_switch for), which is how the flag used to get stuck on.
+            device.switch_unreachable = False
             was_active = device.active
             device.active = live_state.state == "on"
             if device.active and device.last_on_at is None:

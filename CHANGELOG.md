@@ -3,6 +3,18 @@
 Die Release-Beschreibung auf GitHub wird automatisch aus dem jeweiligen
 Abschnitt hier erzeugt (siehe `.github/workflows/release.yml`).
 
+## v0.4.4 – „Schalter nicht erreichbar" bleibt nicht mehr kleben
+
+### Behoben
+- **Ein Gerät blieb rot mit „⚠ Schalter nicht erreichbar" markiert, obwohl
+  der Schalter längst wieder da war.** War die Schalter-Entität einmal
+  kurz nicht verfügbar (Relais-Neustart, WLAN-Aussetzer), wurde die
+  Markierung nur beim nächsten *aktiven* Schaltbefehl zurückgesetzt.
+  Geräte, die Optimum Watt gerade nur hält (z. B. Pool-Pumpe im
+  Pflichtlauf), bekamen nie einen solchen Befehl – die Warnung blieb
+  dauerhaft stehen. Jetzt wird bei jedem Zyklus geprüft, ob die Entität
+  wieder erreichbar ist, und die Markierung entsprechend gesetzt.
+
 ## v0.4.3 – Regelung kann nicht mehr hängenbleiben
 
 ### Behoben
