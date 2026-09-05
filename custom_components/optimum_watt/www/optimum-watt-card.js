@@ -793,6 +793,11 @@ class OptimumWattCard extends HTMLElement {
     wrap.className = "em-form";
     const nSensors = (d.info_entities || []).length;
     const nSched = (d.schedules || []).length;
+    const advSet =
+      (d.min_soc_percent !== "" && Number(d.min_soc_percent) > 0) ||
+      (d.hysteresis_w !== "" && Number(d.hysteresis_w) > 0) ||
+      (d.min_runtime_minutes !== "" && Number(d.min_runtime_minutes) > 0) ||
+      (d.min_on_duration_min !== "" && Number(d.min_on_duration_min) > 0);
     wrap.innerHTML = `
       <div class="em-fsec">
         <div class="em-fsec-h">Grunddaten</div>
@@ -818,11 +823,6 @@ class OptimumWattCard extends HTMLElement {
           <label>Einschaltschwelle bezieht sich auf <button type="button" class="em-info" data-hint="basis" title="Info">&#9432;</button></label>
           <select id="em-f-basis"></select>
           <p class="em-hint" data-hint-for="basis" id="em-f-basis-hint" hidden></p>
-        </div>
-        <div class="em-form-row">
-          <label>Mindest-Speicher-Ladestand (%) <button type="button" class="em-info" data-hint="soc" title="Info">&#9432;</button></label>
-          <input type="number" id="em-f-min-soc" value="${escapeHtml(d.min_soc_percent)}" min="0" max="100" step="1" placeholder="leer = keine Einschränkung" />
-          <p class="em-hint" data-hint-for="soc" id="em-f-min-soc-hint" hidden></p>
         </div>
         <div class="em-form-row two">
           <div>
@@ -850,8 +850,13 @@ class OptimumWattCard extends HTMLElement {
         <p class="em-form-hint">Zeitfenster mit fester Aktion (Auto / An / Aus / Regelung aus). Überschreibt in dieser Zeit den Modus.</p>
       </details>
 
-      <details class="em-fsec">
+      <details class="em-fsec" ${advSet ? "open" : ""}>
         <summary>Erweitert</summary>
+        <div class="em-form-row">
+          <label>Mindest-Speicher-Ladestand (%) <button type="button" class="em-info" data-hint="soc" title="Info">&#9432;</button></label>
+          <input type="number" id="em-f-min-soc" value="${escapeHtml(d.min_soc_percent)}" min="0" max="100" step="1" placeholder="leer = keine Einschränkung" />
+          <p class="em-hint" data-hint-for="soc" id="em-f-min-soc-hint" hidden></p>
+        </div>
         <div class="em-form-row">
           <label>Hysterese (W) <button type="button" class="em-info" data-hint="hys" title="Info">&#9432;</button></label>
           <input type="number" id="em-f-hysteresis" value="${escapeHtml(d.hysteresis_w)}" min="0" step="10" />
