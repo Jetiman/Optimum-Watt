@@ -418,8 +418,9 @@ class OptimumWattCard extends HTMLElement {
       .em-sched-days button.active { background: var(--primary-color); color: var(--text-primary-color, #fff); border-color: var(--primary-color); }
       .em-form-hint { font-size: 0.76em; color: var(--secondary-text-color); margin: 3px 0 0; line-height: 1.4; }
       .em-form-actions { display: flex; gap: 8px; justify-content: flex-end; }
-      .em-btn-primary { background: var(--primary-color); color: var(--text-primary-color, white); border: none; border-radius: 6px; padding: 8px 14px; cursor: pointer; font-weight: 500; }
-      .em-btn-secondary { background: transparent; color: var(--secondary-text-color); border: none; border-radius: 6px; padding: 8px 14px; cursor: pointer; }
+      .em-btn-primary { background: var(--primary-color); color: var(--text-primary-color, white); border: 1px solid var(--primary-color); border-radius: 8px; padding: 8px 16px; cursor: pointer; font-weight: 600; }
+      .em-btn-secondary { background: rgba(127,127,127,0.16); color: var(--primary-text-color); border: 1px solid var(--divider-color, #555); border-radius: 8px; padding: 8px 16px; cursor: pointer; font-weight: 500; }
+      .em-btn-secondary:hover { background: rgba(127,127,127,0.28); }
       .em-settings { margin-top: 14px; border-top: 1px solid var(--divider-color, #ddd); padding-top: 10px; }
       .em-settings summary { cursor: pointer; font-weight: 500; color: var(--primary-text-color); }
       .em-settings-feedback { font-size: 0.82em; align-self: center; margin-right: auto; }
