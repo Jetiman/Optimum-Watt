@@ -3,6 +3,18 @@
 Die Release-Beschreibung auf GitHub wird automatisch aus dem jeweiligen
 Abschnitt hier erzeugt (siehe `.github/workflows/release.yml`).
 
+## v0.4.2 – Aufgeräumtes Geräte-Formular
+
+### Geändert
+- Das „Gerät anlegen / bearbeiten"-Formular ist in **Abschnitte**
+  gegliedert (Grunddaten, Schwelle & Regelung) und die langen
+  Erklärtexte stecken jetzt hinter einem **ⓘ zum Aufklappen** statt
+  dauerhaft sichtbar zu sein.
+- **Zusätzliche Sensoren**, **Schaltzeiten** und **Erweitert** sind
+  eigene einklappbare Abschnitte mit Anzahl-Badge; sie öffnen sich beim
+  Bearbeiten automatisch, wenn schon Einträge vorhanden sind.
+- Pflichtfelder mit `*` markiert, etwas mehr Luft, größere Eingabefelder.
+
 ## v0.4.1 – Nicht nur `switch`-Entitäten
 
 ### Behoben

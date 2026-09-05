@@ -379,21 +379,34 @@ class OptimumWattCard extends HTMLElement {
       .em-icon-btn:disabled { opacity: 0.3; cursor: default; }
       .em-add-btn { width: 100%; margin-top: 6px; padding: 10px; border-radius: 10px; border: 1px dashed var(--divider-color, #ccc); background: transparent; color: var(--primary-color); font-weight: 500; cursor: pointer; }
       .em-empty { color: var(--secondary-text-color); text-align: center; padding: 16px 0; }
-      .em-form { border-radius: 10px; padding: 12px; margin-bottom: 8px; background: var(--card-background-color); border: 1px solid var(--divider-color, #ddd); }
-      .em-form-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; min-width: 0; }
+      .em-form { border-radius: 12px; padding: 14px; margin-bottom: 8px; background: var(--card-background-color); border: 1px solid var(--divider-color, #ddd); min-width: 0; }
+      .em-fsec { margin-bottom: 16px; }
+      .em-fsec:last-of-type { margin-bottom: 0; }
+      .em-fsec-h { font-size: 0.68em; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--secondary-text-color); padding-bottom: 6px; margin-bottom: 12px; border-bottom: 1px solid var(--divider-color, #333); }
+      details.em-fsec > summary { list-style: none; cursor: pointer; font-size: 0.68em; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--secondary-text-color); padding: 8px 0; border-bottom: 1px solid var(--divider-color, #333); display: flex; align-items: center; gap: 7px; }
+      details.em-fsec > summary::-webkit-details-marker { display: none; }
+      details.em-fsec > summary::before { content: "\\25B8"; font-size: 1.2em; transition: transform 0.15s; }
+      details.em-fsec[open] > summary::before { transform: rotate(90deg); }
+      details.em-fsec[open] > summary { margin-bottom: 12px; }
+      details.em-fsec > *:not(summary) { margin-top: 12px; }
+      .em-fsec-badge { margin-left: auto; background: var(--primary-color); color: var(--text-primary-color, #fff); border-radius: 10px; min-width: 18px; text-align: center; padding: 1px 6px; font-size: 0.95em; font-weight: 700; letter-spacing: 0; }
+      .em-form-row { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; min-width: 0; }
+      .em-form-row:last-child { margin-bottom: 0; }
       .em-form-row.two { flex-direction: row; gap: 10px; flex-wrap: wrap; }
-      .em-form-row.two > div { flex: 1 1 140px; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-      .em-form-row label { font-size: 0.8em; color: var(--secondary-text-color); overflow-wrap: break-word; }
-      .em-form-row input, .em-form-row select { border-radius: 6px; border: 1px solid var(--divider-color, #ccc); padding: 6px 8px; background: var(--card-background-color); color: var(--primary-text-color); width: 100%; box-sizing: border-box; min-width: 0; }
-      .em-form { min-width: 0; }
+      .em-form-row.two > div { flex: 1 1 130px; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+      .em-form-row label { font-size: 0.82em; color: var(--primary-text-color); display: flex; align-items: center; gap: 5px; overflow-wrap: break-word; }
+      .em-req { color: var(--primary-color); font-weight: 700; }
+      .em-info { border: none; background: none; color: var(--secondary-text-color); cursor: pointer; font-size: 0.95em; line-height: 1; padding: 0; opacity: 0.65; }
+      .em-info:hover { opacity: 1; }
+      .em-form-row input, .em-form-row select { border-radius: 8px; border: 1px solid var(--divider-color, #ccc); padding: 8px 10px; background: var(--card-background-color); color: var(--primary-text-color); width: 100%; box-sizing: border-box; min-width: 0; font-size: 0.95em; }
+      .em-hint { font-size: 0.78em; line-height: 1.45; color: var(--secondary-text-color); margin: 1px 0 0; padding: 7px 9px; background: rgba(127,127,127,0.12); border-radius: 6px; }
+      .em-hint[hidden] { display: none; }
       #em-f-entity-wrap, #em-f-entity-wrap ha-entity-picker { width: 100%; box-sizing: border-box; }
-      #em-f-sensors { display: flex; flex-direction: column; gap: 6px; }
-      .em-sensor-row { display: flex; gap: 6px; align-items: center; }
+      #em-f-sensors, #em-f-schedules { display: flex; flex-direction: column; gap: 6px; }
+      .em-sensor-row, .em-sched-row { display: flex; gap: 6px; align-items: center; background: rgba(127,127,127,0.1); border-radius: 8px; padding: 5px 6px 5px 10px; }
       .em-sensor-row > *:first-child { flex: 1 1 auto; min-width: 0; }
-      .em-f-add-sensor { align-self: flex-start; padding: 4px 8px; font-size: 0.8em; }
-      #em-f-schedules { display: flex; flex-direction: column; gap: 4px; }
-      .em-sched-row { display: flex; gap: 6px; align-items: center; }
-      .em-sched-summary { flex: 1 1 auto; min-width: 0; font-size: 0.83em; overflow-wrap: anywhere; }
+      .em-sched-summary { flex: 1 1 auto; min-width: 0; font-size: 0.85em; overflow-wrap: anywhere; }
+      .em-sub-add { align-self: flex-start; padding: 6px 12px; font-size: 0.8em; border: 1px dashed var(--divider-color, #666); border-radius: 8px; background: transparent; color: var(--primary-color); font-weight: 500; cursor: pointer; }
       .em-modal-backdrop { position: fixed; inset: 0; z-index: 9; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }
       .em-modal-backdrop[hidden] { display: none; }
       .em-modal { background: var(--ha-card-background, var(--card-background-color, #1e1e1e)); color: var(--primary-text-color); border-radius: 12px; padding: 18px; width: 100%; max-width: 360px; box-sizing: border-box; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
@@ -401,9 +414,7 @@ class OptimumWattCard extends HTMLElement {
       .em-sched-days { display: flex; flex-wrap: wrap; gap: 6px; }
       .em-sched-days button { border: 1px solid var(--divider-color, #555); background: transparent; color: inherit; border-radius: 16px; padding: 5px 11px; font-size: 0.82em; cursor: pointer; }
       .em-sched-days button.active { background: var(--primary-color); color: var(--text-primary-color, #fff); border-color: var(--primary-color); }
-      .em-form-advanced { margin-bottom: 10px; }
-      .em-form-advanced summary { cursor: pointer; font-size: 0.85em; color: var(--secondary-text-color); }
-      .em-form-hint { font-size: 0.78em; color: var(--secondary-text-color); margin: -4px 0 4px; }
+      .em-form-hint { font-size: 0.76em; color: var(--secondary-text-color); margin: 3px 0 0; line-height: 1.4; }
       .em-form-actions { display: flex; gap: 8px; justify-content: flex-end; }
       .em-btn-primary { background: var(--primary-color); color: var(--text-primary-color, white); border: none; border-radius: 6px; padding: 8px 14px; cursor: pointer; font-weight: 500; }
       .em-btn-secondary { background: transparent; color: var(--secondary-text-color); border: none; border-radius: 6px; padding: 8px 14px; cursor: pointer; }
@@ -780,60 +791,75 @@ class OptimumWattCard extends HTMLElement {
     const isAdd = this._addingNew;
     const wrap = document.createElement("div");
     wrap.className = "em-form";
+    const nSensors = (d.info_entities || []).length;
+    const nSched = (d.schedules || []).length;
     wrap.innerHTML = `
-      <div class="em-form-row">
-        <label>Name</label>
-        <input type="text" id="em-f-name" value="${escapeHtml(d.name)}" placeholder="z. B. Boiler Stufe 1" />
-      </div>
-      <div class="em-form-row">
-        <label>Schalter</label>
-        <div id="em-f-entity-wrap"></div>
-      </div>
-      <div class="em-form-row">
-        <label>Zusätzliche Sensoren (optional) – z. B. Temperatur oder Leistung</label>
-        <div id="em-f-sensors"></div>
-        <button type="button" class="em-btn-secondary em-f-add-sensor" id="em-f-add-sensor">+ Sensor</button>
-        <p class="em-form-hint">Werden nur als Info neben dem Gerät angezeigt und beeinflussen die Regelung nicht.</p>
-      </div>
-      <div class="em-form-row">
-        <label>Schaltzeiten (optional)</label>
-        <div id="em-f-schedules"></div>
-        <button type="button" class="em-btn-secondary em-f-add-sensor" id="em-f-add-schedule">+ Schaltzeit</button>
-        <p class="em-form-hint">Zeitfenster mit fester Aktion (Auto / An / Aus / Regelung aus). Überschreibt in dieser Zeit den oben gewählten Modus.</p>
-      </div>
-      <div class="em-form-row">
-        <label>Leistungsbedarf (W) – zugleich Einschaltschwelle</label>
-        <input type="number" id="em-f-power" value="${escapeHtml(d.power_w)}" min="0" step="10" />
-      </div>
-      <div class="em-form-row">
-        <label>Einschaltschwelle bezieht sich auf</label>
-        <select id="em-f-basis"></select>
-        <p class="em-form-hint" id="em-f-basis-hint"></p>
-      </div>
-      <div class="em-form-row">
-        <label>Mindest-Speicher-Ladestand (%) für Einschaltung</label>
-        <input type="number" id="em-f-min-soc" value="${escapeHtml(d.min_soc_percent)}" min="0" max="100" step="1" placeholder="leer = keine Einschränkung" />
-        <p class="em-form-hint" id="em-f-min-soc-hint"></p>
-      </div>
-      <div class="em-form-row two">
-        <div>
-          <label>Einschaltverzögerung (min)</label>
-          <input type="number" id="em-f-on-delay" value="${escapeHtml(d.on_delay_min)}" min="0" step="1" />
+      <div class="em-fsec">
+        <div class="em-fsec-h">Grunddaten</div>
+        <div class="em-form-row">
+          <label>Name <span class="em-req">*</span></label>
+          <input type="text" id="em-f-name" value="${escapeHtml(d.name)}" placeholder="z. B. Boiler Stufe 1" />
         </div>
-        <div>
-          <label>Ausschaltverzögerung (min)</label>
-          <input type="number" id="em-f-off-delay" value="${escapeHtml(d.off_delay_min)}" min="0" step="1" />
+        <div class="em-form-row">
+          <label>Schalter <span class="em-req">*</span> <button type="button" class="em-info" data-hint="sw" title="Info">&#9432;</button></label>
+          <div id="em-f-entity-wrap"></div>
+          <p class="em-hint" data-hint-for="sw" hidden>Erlaubt sind <code>switch</code>, <code>input_boolean</code>, <code>light</code> und <code>fan</code> – die Entität, die Optimum Watt ein-/ausschaltet.</p>
         </div>
       </div>
-      <details class="em-form-advanced">
-        <summary>Erweitert</summary>
-        <div class="em-form-row" style="margin-top: 8px;">
-          <label>Hysterese (W) – Abstand zwischen Ein- und Ausschaltschwelle</label>
-          <input type="number" id="em-f-hysteresis" value="${escapeHtml(d.hysteresis_w)}" min="0" step="10" />
+
+      <div class="em-fsec">
+        <div class="em-fsec-h">Schwelle &amp; Regelung</div>
+        <div class="em-form-row">
+          <label>Leistungsbedarf (W) <span class="em-req">*</span> <button type="button" class="em-info" data-hint="pw" title="Info">&#9432;</button></label>
+          <input type="number" id="em-f-power" value="${escapeHtml(d.power_w)}" min="0" step="10" />
+          <p class="em-hint" data-hint-for="pw" hidden>Ist zugleich die Einschaltschwelle: so viel Überschuss (bzw. Produktion) muss anliegen, damit das Gerät zuschaltet.</p>
+        </div>
+        <div class="em-form-row">
+          <label>Einschaltschwelle bezieht sich auf <button type="button" class="em-info" data-hint="basis" title="Info">&#9432;</button></label>
+          <select id="em-f-basis"></select>
+          <p class="em-hint" data-hint-for="basis" id="em-f-basis-hint" hidden></p>
+        </div>
+        <div class="em-form-row">
+          <label>Mindest-Speicher-Ladestand (%) <button type="button" class="em-info" data-hint="soc" title="Info">&#9432;</button></label>
+          <input type="number" id="em-f-min-soc" value="${escapeHtml(d.min_soc_percent)}" min="0" max="100" step="1" placeholder="leer = keine Einschränkung" />
+          <p class="em-hint" data-hint-for="soc" id="em-f-min-soc-hint" hidden></p>
         </div>
         <div class="em-form-row two">
           <div>
-            <label>Mindestlaufzeit pro Tag (min)</label>
+            <label>Einschaltverzögerung (min)</label>
+            <input type="number" id="em-f-on-delay" value="${escapeHtml(d.on_delay_min)}" min="0" step="1" />
+          </div>
+          <div>
+            <label>Ausschaltverzögerung (min)</label>
+            <input type="number" id="em-f-off-delay" value="${escapeHtml(d.off_delay_min)}" min="0" step="1" />
+          </div>
+        </div>
+      </div>
+
+      <details class="em-fsec" ${nSensors ? "open" : ""}>
+        <summary>Zusätzliche Sensoren <span class="em-fsec-badge" id="em-f-sensors-badge" ${nSensors ? "" : "hidden"}>${nSensors}</span></summary>
+        <div id="em-f-sensors"></div>
+        <button type="button" class="em-sub-add" id="em-f-add-sensor">+ Sensor</button>
+        <p class="em-form-hint">Nur Info neben dem Gerät (z. B. Temperatur, Leistung) – kein Einfluss auf die Regelung.</p>
+      </details>
+
+      <details class="em-fsec" ${nSched ? "open" : ""}>
+        <summary>Schaltzeiten <span class="em-fsec-badge" id="em-f-sched-badge" ${nSched ? "" : "hidden"}>${nSched}</span></summary>
+        <div id="em-f-schedules"></div>
+        <button type="button" class="em-sub-add" id="em-f-add-schedule">+ Schaltzeit</button>
+        <p class="em-form-hint">Zeitfenster mit fester Aktion (Auto / An / Aus / Regelung aus). Überschreibt in dieser Zeit den Modus.</p>
+      </details>
+
+      <details class="em-fsec">
+        <summary>Erweitert</summary>
+        <div class="em-form-row">
+          <label>Hysterese (W) <button type="button" class="em-info" data-hint="hys" title="Info">&#9432;</button></label>
+          <input type="number" id="em-f-hysteresis" value="${escapeHtml(d.hysteresis_w)}" min="0" step="10" />
+          <p class="em-hint" data-hint-for="hys" hidden>Abstand zwischen Ein- und Ausschaltschwelle – verhindert Flattern bei schwankendem Überschuss.</p>
+        </div>
+        <div class="em-form-row two">
+          <div>
+            <label>Mindestlaufzeit / Tag (min)</label>
             <input type="number" id="em-f-min-runtime" value="${escapeHtml(d.min_runtime_minutes)}" min="0" step="5" placeholder="leer = aus" />
           </div>
           <div>
@@ -841,25 +867,36 @@ class OptimumWattCard extends HTMLElement {
             <input type="time" id="em-f-min-runtime-deadline" value="${escapeHtml(d.min_runtime_deadline)}" />
           </div>
         </div>
-        <p class="em-form-hint">Wird die Mindestlaufzeit sonst nicht erreicht, schaltet Optimum Watt notfalls auch ohne Überschuss ein, rechtzeitig vor der Uhrzeit.</p>
-        <div class="em-form-row" style="margin-top: 8px;">
-          <label>Mindestlaufzeit pro Aktivierung (min)</label>
+        <p class="em-form-hint">Wird die Zeit sonst nicht erreicht, schaltet Optimum Watt notfalls auch ohne Überschuss ein – rechtzeitig vor der Uhrzeit.</p>
+        <div class="em-form-row">
+          <label>Mindestlaufzeit / Aktivierung (min)</label>
           <input type="number" id="em-f-min-on-duration" value="${escapeHtml(d.min_on_duration_min)}" min="0" step="1" placeholder="leer = aus" />
+          <p class="em-form-hint">Einmal an, läuft das Gerät mindestens so lange weiter – auch wenn der Überschuss vorher wegfällt.</p>
         </div>
-        <p class="em-form-hint">Einmal eingeschaltet, läuft das Gerät mindestens so lange weiter, auch wenn der Überschuss vorher wegfällt.</p>
       </details>
+
       <div class="em-form-actions">
         <button class="em-btn-secondary" id="em-f-cancel">Abbrechen</button>
         <button class="em-btn-primary" id="em-f-save">${isAdd ? "Hinzufügen" : "Speichern"}</button>
       </div>
     `;
 
+    wrap.querySelectorAll(".em-info").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const h = wrap.querySelector(`.em-hint[data-hint-for="${btn.dataset.hint}"]`);
+        if (h) h.hidden = !h.hidden;
+      });
+    });
+
     wrap.querySelector("#em-f-name").addEventListener("input", (e) => (this._draft.name = e.target.value));
     wrap.querySelector("#em-f-power").addEventListener("input", (e) => (this._draft.power_w = e.target.value));
     wrap.querySelector("#em-f-on-delay").addEventListener("input", (e) => (this._draft.on_delay_min = e.target.value));
     wrap.querySelector("#em-f-off-delay").addEventListener("input", (e) => (this._draft.off_delay_min = e.target.value));
     wrap.querySelector("#em-f-hysteresis").addEventListener("input", (e) => (this._draft.hysteresis_w = e.target.value));
-    wrap.querySelector("#em-f-min-soc").addEventListener("input", (e) => (this._draft.min_soc_percent = e.target.value));
+    wrap.querySelector("#em-f-min-soc").addEventListener("input", (e) => {
+      this._draft.min_soc_percent = e.target.value;
+      this._renderMinSocHint(wrap);
+    });
     this._renderBasisSelect(wrap);
     this._renderMinSocHint(wrap);
     wrap.querySelector("#em-f-min-runtime").addEventListener("input", (e) => (this._draft.min_runtime_minutes = e.target.value));
@@ -946,6 +983,14 @@ class OptimumWattCard extends HTMLElement {
       row.append(summary, edit, rm);
       host.appendChild(row);
     });
+    this._updateFsecBadge(wrap, "em-f-sched-badge", list.length);
+  }
+
+  _updateFsecBadge(wrap, id, count) {
+    const badge = wrap.querySelector(`#${id}`);
+    if (!badge) return;
+    badge.textContent = count || "";
+    badge.hidden = !count;
   }
 
   _openScheduleEditor(index) {
@@ -1055,6 +1100,7 @@ class OptimumWattCard extends HTMLElement {
         });
       host.appendChild(datalist);
     }
+    this._updateFsecBadge(wrap, "em-f-sensors-badge", list.length);
   }
 
   _renderBasisSelect(wrap) {
@@ -1070,8 +1116,9 @@ class OptimumWattCard extends HTMLElement {
       const opt = THRESHOLD_BASIS_OPTIONS.find((o) => o.value === select.value) || THRESHOLD_BASIS_OPTIONS[0];
       const unavailable = opt.needs && !state[opt.needs];
       hint.textContent = unavailable
-        ? `${opt.hint} Achtung: Dafür ist noch kein passender Sensor in den Optimum Watt-Integrationseinstellungen hinterlegt.`
+        ? `${opt.hint} ⚠ Dafür ist noch kein passender Sensor in den Integrationseinstellungen hinterlegt.`
         : opt.hint;
+      if (unavailable) hint.hidden = false;
     };
     updateHint();
 
@@ -1084,10 +1131,15 @@ class OptimumWattCard extends HTMLElement {
   _renderMinSocHint(wrap) {
     const hint = wrap.querySelector("#em-f-min-soc-hint");
     const state = this._latestState || {};
-    const base = "Solange der Speicher nicht mindestens so weit geladen ist, springt das Gerät nicht an (0/leer = keine Einschränkung). Ausnahme: Wird schon tatsächlich ins Netz eingespeist und deckt das allein die Einschaltschwelle, gilt das Limit nicht.";
-    hint.textContent = state.has_storage_soc_entity
-      ? base
-      : `${base} Achtung: Dafür ist noch kein Speicher-Ladestand-Sensor in den Optimum Watt-Integrationseinstellungen hinterlegt.`;
+    const base =
+      "Springt erst an, wenn der Speicher so weit geladen ist (0/leer = keine Einschränkung). Wird ohnehin schon ins Netz eingespeist und deckt das die Schwelle, gilt das Limit nicht.";
+    const inUse = this._draft.min_soc_percent !== "" && Number(this._draft.min_soc_percent) > 0;
+    if (state.has_storage_soc_entity) {
+      hint.textContent = base;
+    } else {
+      hint.textContent = `${base} ⚠ Dafür ist noch kein Speicher-Ladestand-Sensor in den Integrationseinstellungen hinterlegt.`;
+      if (inUse) hint.hidden = false;
+    }
   }
 
   static getStubConfig() {
