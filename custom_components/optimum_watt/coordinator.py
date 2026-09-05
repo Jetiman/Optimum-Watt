@@ -9,7 +9,6 @@ doubles as the surplus threshold needed to switch it on.
 """
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import logging
 import re
@@ -29,7 +28,6 @@ import homeassistant.util.dt as dt_util
 
 from .const import (
     CASCADE_STAGGER_S,
-    SWITCH_CALL_TIMEOUT_S,
     CONF_GRID_POWER_ENTITY,
     CONF_INVERT,
     CONF_PV_PRODUCTION_ENTITY,
@@ -339,6 +337,9 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
         self.auto_mode: bool = True
         self.version: str = ""  # integration version, filled in async_setup
         self.build: str = ""  # short source hash, filled in async_setup
+        # When the cascade last ran to completion. If this stops advancing
+        # while HA is up, evaluation is wedged (see the card's warning).
+        self._last_evaluate_at: datetime | None = None
         self.current_power_w: float | None = None
         # Raw PV production (W) and battery power, normalized so positive =
         # charging / negative = discharging. None while unconfigured.
@@ -766,6 +767,7 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
     async def _evaluate(self) -> None:
         now = dt_util.utcnow()
         now_local = dt_util.now()
+        self._last_evaluate_at = now
 
         self._sync_active_from_states()
 
@@ -1029,32 +1031,39 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
         platform, so this works for a ``switch``, an ``input_boolean``, a
         ``light``, a ``fan`` - anything toggleable - not just ``switch.*``.
 
-        Returns False (and logs a warning) if the call fails or doesn't
-        complete within SWITCH_CALL_TIMEOUT_S - the entity is unavailable,
-        missing, or a slow/unresponsive device never acks. The caller must
-        not update its internal state then, and crucially neither failure
-        mode may bubble up or block: a single dead or hanging relay would
-        otherwise stall the whole cascade evaluation every tick, freezing
-        every other device on a stale status with no error ever logged,
-        since as far as that call is concerned nothing failed - it's just
-        still waiting.
+        The call is fired **non-blocking**: it returns the moment HA has
+        queued the service, never waiting on the device to actually
+        respond. A slow or wedged relay (a Shelly mid-reboot, say) used to
+        be able to hang a blocking call indefinitely - not even
+        ``asyncio.timeout`` reliably broke it - which stalled the whole
+        cascade for every device, silently, with no error logged. The next
+        tick's `_sync_active_from_states` reconciles what really happened.
+
+        Returns False if the entity is missing or unavailable (nothing to
+        talk to) so the caller leaves its state untouched and retries.
         """
         _LOGGER.debug("Optimum Watt: %s %s", action, device.entity_id)
-        try:
-            async with asyncio.timeout(SWITCH_CALL_TIMEOUT_S):
-                await self.hass.services.async_call(
-                    "homeassistant", action, {"entity_id": device.entity_id}, blocking=True
-                )
-        except Exception as err:  # noqa: BLE001 - HA raises many types here, plus TimeoutError
+        state = self.hass.states.get(device.entity_id)
+        if state is None or state.state in ("unavailable", "unknown"):
             _LOGGER.warning(
-                "Optimum Watt: could not %s %s: %s",
-                action,
+                "Optimum Watt: %s is %s, cannot %s",
                 device.entity_id,
-                err,
+                "missing" if state is None else state.state,
+                action,
             )
             device.switch_unreachable = True
             return False
         device.switch_unreachable = False
+        try:
+            await self.hass.services.async_call(
+                "homeassistant", action, {"entity_id": device.entity_id}, blocking=False
+            )
+        except Exception as err:  # noqa: BLE001 - HA raises several types here
+            _LOGGER.warning(
+                "Optimum Watt: could not %s %s: %s", action, device.entity_id, err
+            )
+            device.switch_unreachable = True
+            return False
         return True
 
     async def _turn_on(self, device: Device, now: datetime) -> None:
@@ -1135,6 +1144,11 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
             "auto_mode": self.auto_mode,
             "version": self.version,
             "build": self.build,
+            "evaluate_age_s": (
+                round((dt_util.utcnow() - self._last_evaluate_at).total_seconds(), 1)
+                if self._last_evaluate_at is not None
+                else None
+            ),
             "surplus_w": self.current_power_w,
             "production_w": self.production_w,
             "storage_w": self.storage_w,

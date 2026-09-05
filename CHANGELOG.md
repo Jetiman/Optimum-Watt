@@ -3,6 +3,25 @@
 Die Release-Beschreibung auf GitHub wird automatisch aus dem jeweiligen
 Abschnitt hier erzeugt (siehe `.github/workflows/release.yml`).
 
+## v0.4.3 – Regelung kann nicht mehr hängenbleiben
+
+### Behoben
+- **Ein zäher Schalter konnte die ganze Regelung dauerhaft einfrieren.**
+  Der Schaltbefehl lief bisher „blocking" – er wartete, bis das Gerät
+  wirklich reagiert. Ein wackeliges Relais (z. B. ein Shelly, der gerade
+  neu startet) konnte dieses Warten unbegrenzt hängen lassen, ohne
+  Fehlermeldung. Dann standen **alle** Geräte still, mit „schaltet in 0 s
+  ein" o. Ä. Jetzt wird nur noch der Befehl abgeschickt; ob er gewirkt
+  hat, prüft der nächste Zyklus. Ein nicht erreichbares Gerät wird als
+  „Schalter nicht erreichbar" markiert, der Rest läuft weiter.
+- Der Abbrechen-Button hat wieder einen sichtbaren Hintergrund.
+
+### Neu
+- Reagiert die Regelung länger als ~45 s nicht, zeigt die Karte oben
+  eine Warnung mit Hinweis zum Neuladen.
+- **Diagnose-Download** (Integrationseinstellungen → ⋯) mit dem internen
+  Timer-Zustand pro Gerät – hilft beim Einkreisen solcher Fälle.
+
 ## v0.4.2 – Aufgeräumtes Geräte-Formular
 
 ### Geändert

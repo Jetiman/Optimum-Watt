@@ -628,10 +628,14 @@ class OptimumWattCard extends HTMLElement {
       ? "var(--success-color, #43a047)"
       : "var(--disabled-text-color, #9e9e9e)";
 
-    this._els.alert.hidden = !state.sensor_stale;
+    const evalStalled = state.evaluate_age_s !== null && state.evaluate_age_s !== undefined && state.evaluate_age_s > 45;
+    this._els.alert.hidden = !state.sensor_stale && !evalStalled;
     this._els.alertText.textContent = state.sensor_stale
       ? `Kein neuer Wert vom Einspeise-Sensor seit über ${fmtMinutes(state.sensor_timeout_s)} min – ` +
         "aktive Geräte werden sicherheitshalber nacheinander abgeschaltet."
+      : evalStalled
+      ? `Die Regelung reagiert seit ${Math.round(state.evaluate_age_s)} s nicht mehr. ` +
+        `Falls das anhält: Optimum Watt in den Integrationseinstellungen neu laden.`
       : "";
 
     // Don't stomp on the field while the user is actively editing it.
