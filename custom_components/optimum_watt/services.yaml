@@ -125,6 +125,12 @@ add_device:
       selector:
         entity:
           multiple: true
+    schedules:
+      name: Schaltzeiten
+      description: 'Liste wiederkehrender Zeitfenster, die den Modus überschreiben. Je Eintrag: start/end als "HH:MM", days als Liste 0-6 (Montag = 0), action = auto/on/off/disabled. Beispiel: [{"start": "22:00", "end": "06:00", "days": [0,1,2,3,4], "action": "off"}]'
+      required: false
+      selector:
+        object:
 
 remove_device:
   name: Gerät entfernen

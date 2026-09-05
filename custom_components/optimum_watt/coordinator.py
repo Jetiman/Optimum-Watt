@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import logging
+import re
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -58,6 +59,61 @@ _LOGGER = logging.getLogger(__name__)
 
 def _storage_key(entry_id: str) -> str:
     return f"{DOMAIN}_{entry_id}_devices"
+
+
+_TIME_RE = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
+_SCHEDULE_ACTIONS = (MODE_AUTO, MODE_ON, MODE_OFF, MODE_DISABLED)
+
+
+def _normalize_schedule(raw: Any) -> dict[str, Any] | None:
+    """Validate one raw schedule entry, or return None to drop it.
+
+    A schedule is a recurring time window that overrides a device's mode:
+    {id, start "HH:MM", end "HH:MM", days [0-6, Mon=0], action}.
+    """
+    if not isinstance(raw, dict):
+        return None
+    start = str(raw.get("start", ""))
+    end = str(raw.get("end", ""))
+    action = raw.get("action")
+    if not _TIME_RE.match(start) or not _TIME_RE.match(end):
+        return None
+    if action not in _SCHEDULE_ACTIONS:
+        return None
+    try:
+        days = sorted({int(d) for d in raw.get("days", []) if 0 <= int(d) <= 6})
+    except (TypeError, ValueError):
+        return None
+    if not days:
+        return None
+    return {
+        "id": str(raw.get("id") or uuid.uuid4().hex[:8]),
+        "start": start,
+        "end": end,
+        "days": days,
+        "action": action,
+    }
+
+
+def _schedule_active_at(schedule: dict[str, Any], now_local: datetime) -> bool:
+    """Whether a schedule window covers this local moment.
+
+    An end <= start wraps past midnight (e.g. 22:00-06:00), and the wrapped
+    early-morning part still belongs to the *start* day.
+    """
+    sh, sm = (int(x) for x in schedule["start"].split(":"))
+    eh, em = (int(x) for x in schedule["end"].split(":"))
+    start_min = sh * 60 + sm
+    end_min = eh * 60 + em
+    now_min = now_local.hour * 60 + now_local.minute
+    days = schedule["days"]
+    if start_min == end_min:
+        return False
+    if start_min < end_min:
+        return now_local.weekday() in days and start_min <= now_min < end_min
+    if now_local.weekday() in days and now_min >= start_min:
+        return True
+    return (now_local.weekday() - 1) % 7 in days and now_min < end_min
 
 
 def _compute_build_hash() -> str:
@@ -118,7 +174,17 @@ class Device:
     # part of the cascade logic.
     info_entities: list[str] = field(default_factory=list)
 
+    # Recurring time windows that override `mode` while active - each is
+    # {id, start "HH:MM", end "HH:MM", days [0-6, Mon=0], action}. Empty by
+    # default, so a device without schedules behaves exactly as before.
+    schedules: list[dict[str, Any]] = field(default_factory=list)
+
     active: bool = False
+    # `mode` resolved against `schedules` for the current tick, plus whether
+    # a schedule is doing the overriding right now. Not persisted - the
+    # cascade recomputes it every evaluation.
+    mode_effective: str = MODE_AUTO
+    schedule_active: bool = False
     surplus_since: datetime | None = None
     deficit_since: datetime | None = None
     last_on_at: datetime | None = None
@@ -143,6 +209,23 @@ class Device:
     surplus_met: bool = False
     deficit_met: bool = False
 
+    def __post_init__(self) -> None:
+        # Give mode_effective a sane value before the first cascade tick.
+        self.mode_effective = self.mode
+
+    def resolve_mode(self, now_local: datetime) -> None:
+        """Set mode_effective / schedule_active from schedules for this moment.
+
+        Later entries in the list win when two windows overlap.
+        """
+        for schedule in reversed(self.schedules):
+            if _schedule_active_at(schedule, now_local):
+                self.mode_effective = schedule["action"]
+                self.schedule_active = True
+                return
+        self.mode_effective = self.mode
+        self.schedule_active = False
+
     @property
     def on_threshold_w(self) -> float:
         return self.power_w
@@ -152,11 +235,12 @@ class Device:
         return max(self.power_w - self.hysteresis_w, 0)
 
     def status_text(self) -> str:
-        if self.mode == MODE_DISABLED:
+        mode = self.mode_effective
+        if mode == MODE_DISABLED:
             return "disabled"
-        if self.mode == MODE_ON:
+        if mode == MODE_ON:
             return "manual_on"
-        if self.mode == MODE_OFF:
+        if mode == MODE_OFF:
             return "manual_off"
         if self.catchup_active:
             return "catchup"
@@ -180,6 +264,7 @@ class Device:
             "runtime_date": self.runtime_date,
             "min_on_duration_s": self.min_on_duration_s,
             "info_entities": list(self.info_entities),
+            "schedules": [dict(s) for s in self.schedules],
         }
 
     def to_dict(
@@ -200,6 +285,8 @@ class Device:
                 "catchup_active": self.catchup_active,
                 "switch_unreachable": self.switch_unreachable,
                 "info_readings": info_readings or [],
+                "mode_effective": self.mode_effective,
+                "schedule_active": self.schedule_active,
             }
         )
         return data
@@ -223,6 +310,9 @@ class Device:
             runtime_date=data.get("runtime_date"),
             min_on_duration_s=data.get("min_on_duration_s", 0),
             info_entities=[str(e) for e in data.get("info_entities", []) if e],
+            schedules=[
+                s for s in (_normalize_schedule(r) for r in data.get("schedules", [])) if s
+            ],
         )
 
 
@@ -515,6 +605,7 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
         min_runtime_deadline: str | None = None,
         min_on_duration_s: int | None = None,
         info_entities: list[str] | None = None,
+        schedules: list[dict[str, Any]] | None = None,
     ) -> Device:
         device = Device(
             id=uuid.uuid4().hex[:8],
@@ -530,6 +621,7 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
             min_runtime_deadline=min_runtime_deadline or None,
             min_on_duration_s=int(min_on_duration_s) if min_on_duration_s else 0,
             info_entities=[str(e) for e in (info_entities or []) if e],
+            schedules=[s for s in (_normalize_schedule(r) for r in (schedules or [])) if s],
         )
         self.devices.append(device)
         await self._async_save_state()
@@ -556,6 +648,10 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
                 setattr(device, key, fields[key])
         if "info_entities" in fields and fields["info_entities"] is not None:
             device.info_entities = [str(e) for e in fields["info_entities"] if e]
+        if "schedules" in fields and fields["schedules"] is not None:
+            device.schedules = [
+                s for s in (_normalize_schedule(r) for r in fields["schedules"]) if s
+            ]
         if "mode" in fields and fields["mode"] is not None:
             # Avoid a stale timer instantly firing if the device returns to auto later.
             device.surplus_since = None
@@ -648,7 +744,9 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
         (except ones set to "Regelung aus") gets shut down regardless of
         mode, one every CASCADE_STAGGER_S so they don't all drop at once.
         """
-        candidates = [d for d in reversed(self.devices) if d.mode != MODE_DISABLED and d.active]
+        candidates = [
+            d for d in reversed(self.devices) if d.mode_effective != MODE_DISABLED and d.active
+        ]
         if not candidates:
             return
         if (
@@ -669,6 +767,9 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
         now_local = dt_util.now()
 
         self._sync_active_from_states()
+
+        for device in self.devices:
+            device.resolve_mode(now_local)
 
         if self._is_sensor_stale(now):
             await self._run_stale_sensor_shutdown(now)
@@ -709,7 +810,7 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
         # doesn't care how much the house is drawing.
         reserved_w = 0.0
         for d in self.devices:
-            if d.mode != MODE_AUTO or d.active:
+            if d.mode_effective != MODE_AUTO or d.active:
                 continue
             basis_value = self._basis_value(d.threshold_basis)
             if basis_value is None:
@@ -767,7 +868,7 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
         # surplus shouldn't cancel an almost-complete off-delay wait.
         freed_w = 0.0
         for d in reversed(self.devices):
-            if d.mode != MODE_AUTO or not d.active:
+            if d.mode_effective != MODE_AUTO or not d.active:
                 continue
             if d.catchup_active or not self._min_on_duration_satisfied(d, now):
                 d.deficit_since = None
@@ -821,10 +922,10 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
                 device.catchup_active = False
 
     async def _sync_manual_mode(self, device: Device) -> None:
-        """Force the relay to match a manual override, independent of surplus."""
-        if device.mode == MODE_ON and not device.active:
+        """Force the relay to match a manual / scheduled override, independent of surplus."""
+        if device.mode_effective == MODE_ON and not device.active:
             await self._turn_on(device, dt_util.utcnow())
-        elif device.mode == MODE_OFF and device.active:
+        elif device.mode_effective == MODE_OFF and device.active:
             await self._turn_off(device)
 
     def _roll_over_runtime(self, device: Device, now_local: datetime) -> None:
@@ -889,7 +990,11 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
 
     async def _evaluate_min_runtime(self, device: Device, now_local: datetime) -> None:
         """Force a device on if it's running out of time to meet its daily minimum."""
-        if device.mode != MODE_AUTO or device.min_runtime_s <= 0 or not device.min_runtime_deadline:
+        if (
+            device.mode_effective != MODE_AUTO
+            or device.min_runtime_s <= 0
+            or not device.min_runtime_deadline
+        ):
             device.catchup_active = False
             return
 

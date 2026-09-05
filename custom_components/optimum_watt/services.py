@@ -31,6 +31,7 @@ ATTR_MIN_RUNTIME_S = "min_runtime_s"
 ATTR_MIN_RUNTIME_DEADLINE = "min_runtime_deadline"
 ATTR_MIN_ON_DURATION_S = "min_on_duration_s"
 ATTR_INFO_ENTITIES = "info_entities"
+ATTR_SCHEDULES = "schedules"
 
 DEADLINE_SCHEMA = vol.Any(vol.Match(r"^([01]\d|2[0-3]):[0-5]\d$"), "")
 
@@ -49,6 +50,7 @@ ADD_DEVICE_SCHEMA = vol.Schema(
         vol.Optional(ATTR_MIN_RUNTIME_DEADLINE): DEADLINE_SCHEMA,
         vol.Optional(ATTR_MIN_ON_DURATION_S): vol.Coerce(int),
         vol.Optional(ATTR_INFO_ENTITIES): vol.All(cv.ensure_list, [cv.entity_id]),
+        vol.Optional(ATTR_SCHEDULES): vol.All(cv.ensure_list, [dict]),
     }
 )
 
@@ -100,6 +102,7 @@ async def async_register_services(hass: HomeAssistant) -> None:
             min_runtime_deadline=call.data.get(ATTR_MIN_RUNTIME_DEADLINE),
             min_on_duration_s=call.data.get(ATTR_MIN_ON_DURATION_S),
             info_entities=call.data.get(ATTR_INFO_ENTITIES),
+            schedules=call.data.get(ATTR_SCHEDULES),
         )
 
     async def handle_remove_device(call: ServiceCall) -> None:

@@ -240,6 +240,7 @@ class OptimumWattCard extends HTMLElement {
       min_runtime_deadline: "",
       min_on_duration_min: "",
       info_entities: [],
+      schedules: [],
     };
     this._renderDevicesWithForm();
   }
@@ -260,11 +261,13 @@ class OptimumWattCard extends HTMLElement {
       min_runtime_deadline: device.min_runtime_deadline || "",
       min_on_duration_min: device.min_on_duration_s ? String(device.min_on_duration_s / 60) : "",
       info_entities: [...(device.info_entities || [])],
+      schedules: (device.schedules || []).map((s) => ({ ...s, days: [...(s.days || [])] })),
     };
     this._renderDevicesWithForm();
   }
 
   _cancelForm() {
+    this._closeScheduleEditor();
     this._addingNew = false;
     this._editingId = null;
     this._draft = null;
@@ -292,6 +295,15 @@ class OptimumWattCard extends HTMLElement {
           ? Math.round(Number(d.min_on_duration_min) * 60)
           : 0,
       info_entities: (d.info_entities || []).map((s) => (s || "").trim()).filter(Boolean),
+      schedules: (d.schedules || [])
+        .filter((s) => s.start && s.end && Array.isArray(s.days) && s.days.length)
+        .map((s) => ({
+          id: s.id || Math.random().toString(36).slice(2, 10),
+          start: s.start,
+          end: s.end,
+          days: [...s.days].sort((a, b) => a - b),
+          action: s.action || "auto",
+        })),
     };
   }
 
@@ -379,6 +391,16 @@ class OptimumWattCard extends HTMLElement {
       .em-sensor-row { display: flex; gap: 6px; align-items: center; }
       .em-sensor-row > *:first-child { flex: 1 1 auto; min-width: 0; }
       .em-f-add-sensor { align-self: flex-start; padding: 4px 8px; font-size: 0.8em; }
+      #em-f-schedules { display: flex; flex-direction: column; gap: 4px; }
+      .em-sched-row { display: flex; gap: 6px; align-items: center; }
+      .em-sched-summary { flex: 1 1 auto; min-width: 0; font-size: 0.83em; overflow-wrap: anywhere; }
+      .em-modal-backdrop { position: fixed; inset: 0; z-index: 9; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }
+      .em-modal-backdrop[hidden] { display: none; }
+      .em-modal { background: var(--ha-card-background, var(--card-background-color, #1e1e1e)); color: var(--primary-text-color); border-radius: 12px; padding: 18px; width: 100%; max-width: 360px; box-sizing: border-box; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+      .em-modal-title { margin: 0 0 12px; font-size: 1.05em; }
+      .em-sched-days { display: flex; flex-wrap: wrap; gap: 6px; }
+      .em-sched-days button { border: 1px solid var(--divider-color, #555); background: transparent; color: inherit; border-radius: 16px; padding: 5px 11px; font-size: 0.82em; cursor: pointer; }
+      .em-sched-days button.active { background: var(--primary-color); color: var(--text-primary-color, #fff); border-color: var(--primary-color); }
       .em-form-advanced { margin-bottom: 10px; }
       .em-form-advanced summary { cursor: pointer; font-size: 0.85em; color: var(--secondary-text-color); }
       .em-form-hint { font-size: 0.78em; color: var(--secondary-text-color); margin: -4px 0 4px; }
@@ -464,6 +486,41 @@ class OptimumWattCard extends HTMLElement {
         </div>
         <p class="em-settings-version" id="em-settings-version"></p>
       </details>
+
+      <div class="em-modal-backdrop" id="em-sched-backdrop" hidden>
+        <div class="em-modal" role="dialog" aria-modal="true">
+          <h3 class="em-modal-title">Schaltzeit</h3>
+          <div class="em-form-row two">
+            <div><label>Von</label><input type="time" id="em-sched-start" /></div>
+            <div><label>Bis</label><input type="time" id="em-sched-end" /></div>
+          </div>
+          <div class="em-form-row">
+            <label>Aktive Tage</label>
+            <div class="em-sched-days" id="em-sched-days">
+              <button type="button" data-day="0">Mo</button>
+              <button type="button" data-day="1">Di</button>
+              <button type="button" data-day="2">Mi</button>
+              <button type="button" data-day="3">Do</button>
+              <button type="button" data-day="4">Fr</button>
+              <button type="button" data-day="5">Sa</button>
+              <button type="button" data-day="6">So</button>
+            </div>
+          </div>
+          <div class="em-form-row">
+            <label>Schalteraktion</label>
+            <select id="em-sched-action">
+              <option value="auto">Auto</option>
+              <option value="on">An</option>
+              <option value="off">Aus</option>
+              <option value="disabled">Regelung aus</option>
+            </select>
+          </div>
+          <div class="em-form-actions">
+            <button type="button" class="em-btn-secondary" id="em-sched-cancel">Abbrechen</button>
+            <button type="button" class="em-btn-primary" id="em-sched-save">Speichern</button>
+          </div>
+        </div>
+      </div>
     `;
 
     this._root = document.createElement("div");
@@ -487,11 +544,24 @@ class OptimumWattCard extends HTMLElement {
       settingsSave: card.querySelector("#em-settings-save"),
       settingsFeedback: card.querySelector("#em-settings-feedback"),
       settingsVersion: card.querySelector("#em-settings-version"),
+      schedModal: card.querySelector("#em-sched-backdrop"),
+      schedStart: card.querySelector("#em-sched-start"),
+      schedEnd: card.querySelector("#em-sched-end"),
+      schedAction: card.querySelector("#em-sched-action"),
     };
 
     this._els.autoIcon.addEventListener("click", () => this._toggleAuto());
     this._els.addBtn.addEventListener("click", () => this._openAdd());
     this._els.settingsSave.addEventListener("click", () => this._saveSettings());
+
+    card.querySelector("#em-sched-cancel").addEventListener("click", () => this._closeScheduleEditor());
+    card.querySelector("#em-sched-save").addEventListener("click", () => this._saveScheduleEditor());
+    card.querySelectorAll("#em-sched-days button").forEach((btn) => {
+      btn.addEventListener("click", () => btn.classList.toggle("active"));
+    });
+    this._els.schedModal.addEventListener("click", (e) => {
+      if (e.target === this._els.schedModal) this._closeScheduleEditor();
+    });
   }
 
   _showSettingsFeedback(text, isError) {
@@ -642,6 +712,9 @@ class OptimumWattCard extends HTMLElement {
     if (device.min_runtime_s) {
       sub += ` · ${fmtMinutes(device.runtime_today_s)}/${fmtMinutes(device.min_runtime_s)} min bis ${device.min_runtime_deadline}`;
     }
+    if (device.schedule_active) {
+      sub += ` · ⏱ Schaltzeit`;
+    }
 
     const infoItems = (device.info_readings || []).map((r) => {
       const bad = r.state === null || r.state === "unavailable" || r.state === "unknown";
@@ -721,6 +794,12 @@ class OptimumWattCard extends HTMLElement {
         <div id="em-f-sensors"></div>
         <button type="button" class="em-btn-secondary em-f-add-sensor" id="em-f-add-sensor">+ Sensor</button>
         <p class="em-form-hint">Werden nur als Info neben dem Gerät angezeigt und beeinflussen die Regelung nicht.</p>
+      </div>
+      <div class="em-form-row">
+        <label>Schaltzeiten (optional)</label>
+        <div id="em-f-schedules"></div>
+        <button type="button" class="em-btn-secondary em-f-add-sensor" id="em-f-add-schedule">+ Schaltzeit</button>
+        <p class="em-form-hint">Zeitfenster mit fester Aktion (Auto / An / Aus / Regelung aus). Überschreibt in dieser Zeit den oben gewählten Modus.</p>
       </div>
       <div class="em-form-row">
         <label>Leistungsbedarf (W) – zugleich Einschaltschwelle</label>
@@ -827,7 +906,102 @@ class OptimumWattCard extends HTMLElement {
       this._renderSensorPickers(wrap);
     });
 
+    this._renderScheduleRows(wrap);
+    wrap.querySelector("#em-f-add-schedule").addEventListener("click", () => {
+      this._openScheduleEditor(null);
+    });
+
     return wrap;
+  }
+
+  _renderScheduleRows(wrap) {
+    const host = wrap.querySelector("#em-f-schedules");
+    if (!host) return;
+    host.innerHTML = "";
+    const list = this._draft.schedules || [];
+    const dayShort = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
+    const actionLabel = { auto: "Auto", on: "An", off: "Aus", disabled: "Regelung aus" };
+    list.forEach((s, i) => {
+      const row = document.createElement("div");
+      row.className = "em-sched-row";
+      const days = [...(s.days || [])].sort((a, b) => a - b);
+      const daysText = days.length === 7 ? "täglich" : days.map((d) => dayShort[d]).join(" ");
+      const summary = document.createElement("span");
+      summary.className = "em-sched-summary";
+      summary.textContent = `${s.start}–${s.end} · ${daysText} · ${actionLabel[s.action] || s.action}`;
+      const edit = document.createElement("button");
+      edit.type = "button";
+      edit.className = "em-icon-btn";
+      edit.textContent = "✎";
+      edit.addEventListener("click", () => this._openScheduleEditor(i));
+      const rm = document.createElement("button");
+      rm.type = "button";
+      rm.className = "em-icon-btn";
+      rm.textContent = "✕";
+      rm.addEventListener("click", () => {
+        this._draft.schedules.splice(i, 1);
+        this._renderScheduleRows(wrap);
+      });
+      row.append(summary, edit, rm);
+      host.appendChild(row);
+    });
+  }
+
+  _openScheduleEditor(index) {
+    this._scheduleEditIndex = index;
+    const src =
+      index === null || index === undefined
+        ? { start: "", end: "", days: [0, 1, 2, 3, 4, 5, 6], action: "auto" }
+        : this._draft.schedules[index];
+    this._els.schedStart.value = src.start || "";
+    this._els.schedEnd.value = src.end || "";
+    this._els.schedAction.value = src.action || "auto";
+    this._els.schedModal.querySelectorAll(".em-sched-days button").forEach((btn) => {
+      btn.classList.toggle("active", (src.days || []).includes(Number(btn.dataset.day)));
+    });
+    this._els.schedModal.hidden = false;
+  }
+
+  _closeScheduleEditor() {
+    this._els.schedModal.hidden = true;
+    this._scheduleEditIndex = undefined;
+  }
+
+  _saveScheduleEditor() {
+    const start = this._els.schedStart.value;
+    const end = this._els.schedEnd.value;
+    const action = this._els.schedAction.value;
+    const days = Array.from(this._els.schedModal.querySelectorAll(".em-sched-days button"))
+      .filter((b) => b.classList.contains("active"))
+      .map((b) => Number(b.dataset.day))
+      .sort((a, b) => a - b);
+    if (!start || !end) {
+      window.alert("Bitte Von- und Bis-Zeit angeben.");
+      return;
+    }
+    if (start === end) {
+      window.alert("Von- und Bis-Zeit dürfen nicht gleich sein.");
+      return;
+    }
+    if (!days.length) {
+      window.alert("Bitte mindestens einen Tag auswählen.");
+      return;
+    }
+    const i = this._scheduleEditIndex;
+    const existing = i === null || i === undefined ? null : this._draft.schedules[i];
+    const entry = {
+      id: existing?.id || Math.random().toString(36).slice(2, 10),
+      start,
+      end,
+      days,
+      action,
+    };
+    if (!this._draft.schedules) this._draft.schedules = [];
+    if (existing) this._draft.schedules[i] = entry;
+    else this._draft.schedules.push(entry);
+    this._closeScheduleEditor();
+    const formWrap = this._els.devices.querySelector(".em-form");
+    if (formWrap) this._renderScheduleRows(formWrap);
   }
 
   _renderSensorPickers(wrap) {

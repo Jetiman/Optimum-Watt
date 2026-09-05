@@ -180,6 +180,11 @@ Pro Gerät lassen sich optional **zusätzliche Sensoren** hinterlegen (z. B.
 Temperatur oder aktuelle Leistung). Sie werden nur als Info neben dem
 Gerät angezeigt und haben keinen Einfluss auf die Regelung.
 
+Ebenfalls pro Gerät: **Schaltzeiten** – wiederkehrende Zeitfenster (Von/Bis,
+Wochentage) mit fester Aktion **Auto / An / Aus / Regelung aus**. Solange
+ein Fenster aktiv ist, überschreibt es den gewählten Modus des Geräts
+(z. B. „Mo–Fr 22:00–06:00 → Aus"). Fenster über Mitternacht sind erlaubt.
+
 <p align="center">
   <img src="assets/screenshot-list.jpg" width="360" alt="Optimum Watt Geräteliste">
 </p>

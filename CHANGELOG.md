@@ -3,6 +3,22 @@
 Die Release-Beschreibung auf GitHub wird automatisch aus dem jeweiligen
 Abschnitt hier erzeugt (siehe `.github/workflows/release.yml`).
 
+## v0.4.0 – Schaltzeiten pro Gerät
+
+### Neu
+- **Schaltzeiten.** Pro Gerät lassen sich beliebig viele wiederkehrende
+  Zeitfenster anlegen (im „Gerät bearbeiten"-Formular → „Schaltzeiten" →
+  „+ Schaltzeit"). Ein Fenster hat Von-/Bis-Uhrzeit, aktive Wochentage
+  und eine feste Aktion: **Auto**, **An**, **Aus** oder **Regelung aus**.
+  Solange ein Fenster aktiv ist, überschreibt seine Aktion den normal
+  gewählten Modus des Geräts – z. B. „Mo–Fr 22:00–06:00 → Aus" oder
+  „Sa–So ganztags → Auto". Fenster über Mitternacht (22:00–06:00) sind
+  erlaubt; überlappen sich zwei, gewinnt das zuletzt angelegte.
+- In der Karte steht bei einem Gerät, dessen Modus gerade von einer
+  Schaltzeit bestimmt wird, „⏱ Schaltzeit".
+- Auch als Feld `schedules` im Service `optimum_watt.add_device` (Liste
+  von `{start, end, days, action}`; `days` = 0–6, Montag = 0).
+
 ## v0.3.2 – Hängender Schalter-Aufruf blockiert nicht mehr alles
 
 ### Behoben
