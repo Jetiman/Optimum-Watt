@@ -303,7 +303,7 @@ class Device:
             off_delay_s=data.get("off_delay_s", DEFAULT_OFF_DELAY_S),
             mode=data.get("mode", MODE_AUTO),
             threshold_basis=data.get("threshold_basis", DEFAULT_THRESHOLD_BASIS),
-            min_soc_percent=data.get("min_soc_percent", 0.0),
+            min_soc_percent=max(0.0, min(100.0, float(data.get("min_soc_percent", 0.0) or 0.0))),
             min_runtime_s=data.get("min_runtime_s", 0),
             min_runtime_deadline=data.get("min_runtime_deadline"),
             runtime_today_s=data.get("runtime_today_s", 0.0),
@@ -616,7 +616,7 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
             on_delay_s=int(on_delay_s) if on_delay_s is not None else DEFAULT_ON_DELAY_S,
             off_delay_s=int(off_delay_s) if off_delay_s is not None else DEFAULT_OFF_DELAY_S,
             threshold_basis=threshold_basis or DEFAULT_THRESHOLD_BASIS,
-            min_soc_percent=float(min_soc_percent) if min_soc_percent else 0.0,
+            min_soc_percent=max(0.0, min(100.0, float(min_soc_percent))) if min_soc_percent else 0.0,
             min_runtime_s=int(min_runtime_s) if min_runtime_s else 0,
             min_runtime_deadline=min_runtime_deadline or None,
             min_on_duration_s=int(min_on_duration_s) if min_on_duration_s else 0,
@@ -646,6 +646,7 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
         ):
             if key in fields and fields[key] is not None:
                 setattr(device, key, fields[key])
+        device.min_soc_percent = max(0.0, min(100.0, float(device.min_soc_percent)))
         if "info_entities" in fields and fields["info_entities"] is not None:
             device.info_entities = [str(e) for e in fields["info_entities"] if e]
         if "schedules" in fields and fields["schedules"] is not None:

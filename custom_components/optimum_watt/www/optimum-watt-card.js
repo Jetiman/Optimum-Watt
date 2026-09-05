@@ -285,7 +285,9 @@ class OptimumWattCard extends HTMLElement {
       hysteresis_w: d.hysteresis_w === "" ? undefined : Number(d.hysteresis_w),
       threshold_basis: d.threshold_basis || "surplus",
       min_soc_percent:
-        d.min_soc_percent !== "" && Number(d.min_soc_percent) > 0 ? Number(d.min_soc_percent) : 0,
+        d.min_soc_percent !== "" && Number(d.min_soc_percent) > 0
+          ? Math.max(0, Math.min(100, Number(d.min_soc_percent)))
+          : 0,
       on_delay_s: Math.round(Number(d.on_delay_min) * 60),
       off_delay_s: Math.round(Number(d.off_delay_min) * 60),
       min_runtime_s: useMinRuntime ? Math.round(minutes * 60) : 0,
@@ -898,9 +900,17 @@ class OptimumWattCard extends HTMLElement {
     wrap.querySelector("#em-f-on-delay").addEventListener("input", (e) => (this._draft.on_delay_min = e.target.value));
     wrap.querySelector("#em-f-off-delay").addEventListener("input", (e) => (this._draft.off_delay_min = e.target.value));
     wrap.querySelector("#em-f-hysteresis").addEventListener("input", (e) => (this._draft.hysteresis_w = e.target.value));
-    wrap.querySelector("#em-f-min-soc").addEventListener("input", (e) => {
+    const socInput = wrap.querySelector("#em-f-min-soc");
+    socInput.addEventListener("input", (e) => {
       this._draft.min_soc_percent = e.target.value;
       this._renderMinSocHint(wrap);
+    });
+    socInput.addEventListener("change", (e) => {
+      if (e.target.value !== "") {
+        const v = Math.max(0, Math.min(100, Math.round(Number(e.target.value) || 0)));
+        e.target.value = String(v);
+        this._draft.min_soc_percent = e.target.value;
+      }
     });
     this._renderBasisSelect(wrap);
     this._renderMinSocHint(wrap);
