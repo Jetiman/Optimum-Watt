@@ -13,7 +13,8 @@ Nach der Einrichtung hinterlegst du nur einen Sensor, der die aktuelle
 **Netz-Einspeiseleistung** liefert. Alles Weitere passiert im Interface
 (einer eigenen Dashboard-Karte):
 
-- Du legst ein **Gerät** an: Name, zu schaltende `switch`-Entität und
+- Du legst ein **Gerät** an: Name, zu schaltende Entität (`switch`,
+  `input_boolean`, `light` oder `fan`) und
   **Leistungsbedarf in Watt** – dieser Wert ist zugleich die
   Einschaltschwelle.
 - Beispiel: Gerät B braucht 200 W, Gerät A braucht 500 W. Sobald über

@@ -3,6 +3,15 @@
 Die Release-Beschreibung auf GitHub wird automatisch aus dem jeweiligen
 Abschnitt hier erzeugt (siehe `.github/workflows/release.yml`).
 
+## v0.4.1 – Nicht nur `switch`-Entitäten
+
+### Behoben
+- Beim Anlegen eines Geräts ließ sich nur eine `switch.*`-Entität wählen.
+  Jetzt sind auch **`input_boolean`, `light` und `fan`** möglich –
+  geschaltet wird generisch über `homeassistant.turn_on` / `turn_off`,
+  das an die jeweilige Entität weiterreicht. Praktisch z. B. für einen
+  `input_boolean` zum Testen.
+
 ## v0.4.0 – Schaltzeiten pro Gerät
 
 ### Neu

@@ -868,12 +868,13 @@ class OptimumWattCard extends HTMLElement {
     wrap.querySelector("#em-f-save").addEventListener("click", () => this._saveForm());
     wrap.querySelector("#em-f-cancel").addEventListener("click", () => this._cancelForm());
 
+    const switchDomains = ["switch", "input_boolean", "light", "fan"];
     const entityWrap = wrap.querySelector("#em-f-entity-wrap");
     if (customElements.get("ha-entity-picker")) {
       const picker = document.createElement("ha-entity-picker");
       picker.hass = this._hass;
       picker.value = d.entity_id;
-      picker.includeDomains = ["switch"];
+      picker.includeDomains = switchDomains;
       picker.allowCustomEntity = true;
       picker.addEventListener("value-changed", (e) => {
         this._draft.entity_id = e.detail.value || "";
@@ -882,7 +883,7 @@ class OptimumWattCard extends HTMLElement {
     } else {
       const input = document.createElement("input");
       input.type = "text";
-      input.placeholder = "switch.beispiel";
+      input.placeholder = "switch.beispiel / input_boolean.test";
       input.value = d.entity_id;
       input.setAttribute("list", "em-switch-entities");
       input.addEventListener("input", (e) => (this._draft.entity_id = e.target.value));
@@ -891,7 +892,7 @@ class OptimumWattCard extends HTMLElement {
       const datalist = document.createElement("datalist");
       datalist.id = "em-switch-entities";
       Object.keys(this._hass.states)
-        .filter((eid) => eid.startsWith("switch."))
+        .filter((eid) => switchDomains.some((dm) => eid.startsWith(dm + ".")))
         .forEach((eid) => {
           const opt = document.createElement("option");
           opt.value = eid;
