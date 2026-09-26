@@ -925,6 +925,13 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
             device.switch_unreachable = False
             was_active = device.active
             device.active = live_state.state == "on"
+            if device.active != was_active:
+                # Flipped outside our own _turn_on/_turn_off (physical button,
+                # boiler thermostat, another automation): any running timer
+                # belongs to the old state and would otherwise be shown -
+                # and counted down - forever, e.g. an off-delay left over on
+                # a device that is already off.
+                self._clear_timers(device)
             if device.active and device.last_on_at is None:
                 # Restored from a restart, or turned on outside our own _turn_on.
                 device.last_on_at = now
@@ -1088,6 +1095,16 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
         device.recovered_since = None
         device.last_on_at = now
 
+    @staticmethod
+    def _clear_timers(device: Device) -> None:
+        """Drop every running on/off-delay timer of a device."""
+        device.surplus_since = None
+        device.deficit_since = None
+        device.insufficient_since = None
+        device.recovered_since = None
+        device.surplus_met = False
+        device.deficit_met = False
+
     async def _turn_off(self, device: Device) -> None:
         if not await self._call_switch(device, "turn_off"):
             return
@@ -1112,10 +1129,10 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
         much doesn't support it.
         """
         now = dt_util.utcnow()
-        if device.surplus_since is not None and device.surplus_met:
+        if not device.active and device.surplus_since is not None and device.surplus_met:
             remaining = device.on_delay_s - (now - device.surplus_since).total_seconds()
             return max(int(remaining), 0)
-        if device.deficit_since is not None and device.deficit_met:
+        if device.active and device.deficit_since is not None and device.deficit_met:
             remaining = device.off_delay_s - (now - device.deficit_since).total_seconds()
             return max(int(remaining), 0)
         return None

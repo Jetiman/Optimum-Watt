@@ -3,6 +3,20 @@
 Die Release-Beschreibung auf GitHub wird automatisch aus dem jeweiligen
 Abschnitt hier erzeugt (siehe `.github/workflows/release.yml`).
 
+## v0.4.6 – Kein falscher „schaltet ein"-Countdown mehr nach externem Ausschalten
+
+### Behoben
+- **Ein ausgeschaltetes Gerät zeigte „schaltet in … ein" bzw. dauerhaft
+  „schaltet in 0 s ein", obwohl gar nichts anstand.** Wurde ein Relais
+  von außen geschaltet (Boiler-Thermostat, Shelly, Taster, andere
+  Automatisierung), während für das Gerät gerade ein Abschalt-Timer lief,
+  blieb dieser Timer bestehen. Die Karte zeigte ihn dann als
+  Einschalt-Countdown an und zählte ihn bis 0 s herunter. Jetzt werden
+  alle laufenden Timer gelöscht, sobald ein Gerät von außen ein- oder
+  ausgeschaltet wird. Außerdem zeigt die Karte bei einem ausgeschalteten
+  Gerät nur noch den Einschalt-Timer und bei einem laufenden nur noch den
+  Abschalt-Timer.
+
 ## v0.4.5 – Laufende Geräte schalten nicht mehr ständig ein und aus
 
 ### Behoben
