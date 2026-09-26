@@ -881,10 +881,15 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
             basis_value = self._basis_value(d.threshold_basis)
             if basis_value is None:
                 continue
+            # A running device's own draw is already subtracted from the
+            # shared pool (grid feed-in etc.), so add it back: the question
+            # is whether the device would still be covered if it were off.
+            # Without it, a running device turned off whenever the reading
+            # stayed below its own threshold, and came back on right after.
             available = (
                 basis_value
                 if d.threshold_basis == THRESHOLD_BASIS_PRODUCTION
-                else basis_value + freed_w
+                else basis_value + freed_w + d.power_w
             )
             met = available < d.off_threshold_w
             d.deficit_met = met
