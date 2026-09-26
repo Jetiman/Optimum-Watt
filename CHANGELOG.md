@@ -3,6 +3,22 @@
 Die Release-Beschreibung auf GitHub wird automatisch aus dem jeweiligen
 Abschnitt hier erzeugt (siehe `.github/workflows/release.yml`).
 
+## v0.4.5 – Laufende Geräte schalten nicht mehr ständig ein und aus
+
+### Behoben
+- **Ein laufendes Gerät bekam einen Abschalt-Timer, obwohl es sich selbst
+  trug, und schaltete dadurch endlos aus und wieder ein.** Bei der Basis
+  „Überschuss" (und „Überschuss vor Speicherladung") war der Verbrauch des
+  Geräts im gemessenen Überschuss schon abgezogen, die Abschaltschwelle
+  wurde aber trotzdem mit der vollen Leistung des Geräts verglichen. Mit
+  Hysterese 0 W lief deshalb bei jedem Überschuss unterhalb der
+  Geräteleistung ein Abschalt-Timer: Gerät aus, Überschuss steigt wieder,
+  Gerät an – im Wechsel. Sichtbar war das z. B. als „Warmwasser 2 ist an,
+  Warmwasser 1 wartet noch" oder als alle Geräte aus, obwohl genug
+  Überschuss da war. Jetzt wird die eigene Leistung des Geräts wieder
+  hinzugerechnet: Es schaltet nur noch ab, wenn es ohne sich selbst nicht
+  mehr gedeckt wäre. Die Basis „Produktion" ist nicht betroffen.
+
 ## v0.4.4 – „Schalter nicht erreichbar" bleibt nicht mehr kleben
 
 ### Behoben
