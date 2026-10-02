@@ -27,11 +27,13 @@ DEFAULT_OFF_DELAY_S = 300
 
 UPDATE_INTERVAL = timedelta(seconds=10)
 
-# Minimum gap between two devices switching on, or two devices switching
-# off, in the same cascade step - so a sudden change in surplus (or enough
-# headroom for several devices at once) ramps load up/down gradually
-# instead of switching everything at the same instant.
-CASCADE_STAGGER_S = 10
+# Default minimum gap between two switch actions (two devices switching on,
+# or two switching off) - see Coordinator.cascade_stagger_s. Every device
+# whose own delay has elapsed counts as ready at the same time; they are
+# still switched one at a time, this many seconds apart, so a fresh sensor
+# reading can come in between two actions and the cascade can re-evaluate
+# whether the next one is still needed before it fires.
+DEFAULT_CASCADE_STAGGER_S = 10
 
 # How long the opposite condition must persist before an on/off delay timer
 # actually gets reset, so a brief reading blip (e.g. a battery/storage

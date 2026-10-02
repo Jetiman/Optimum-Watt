@@ -20,19 +20,22 @@ Nach der Einrichtung hinterlegst du nur einen Sensor, der die aktuelle
 - Beispiel: Gerät B braucht 200 W, Gerät A braucht 500 W. Sobald über
   200 W eingespeist werden, schaltet B ein. Bleibt der Überschuss weiter
   hoch genug (Gerät B zieht die 200 W ja bereits ab), schaltet danach A
-  ein, sobald zusätzlich 500 W Überschuss anstehen. Reicht der Überschuss
-  von Anfang an für mehrere Geräte auf einmal (z. B. 3 kW Überschuss für
-  zwei Geräte mit je 1 kW), zählen deren Einschaltverzögerungen auch
-  gleichzeitig herunter statt nacheinander – die tatsächlichen
-  Einschaltvorgänge liegen trotzdem mindestens 10 Sekunden auseinander.
+  ein, sobald zusätzlich 500 W Überschuss anstehen.
+- Jedes Gerät zählt seine eigene Ein- bzw. Ausschaltverzögerung für sich,
+  unabhängig von den anderen – reicht der Überschuss von Anfang an für
+  mehrere Geräte auf einmal, laufen also auch mehrere Verzögerungen
+  gleichzeitig. Geschaltet wird aber immer nur ein Gerät nach dem anderen,
+  mit einer einstellbaren Mindestpause dazwischen (**Zeit zwischen
+  Schaltungen**, Standard 10 s, unter „Einstellungen"). So kommt zwischen
+  zwei Schaltvorgängen ein frischer Messwert vom Sensor rein, und ein
+  Gerät, dessen Verzögerung zwar abgelaufen ist, das sich durch die vorige
+  Schaltung aber schon erledigt hat, wird nicht mehr unnötig geschaltet.
 - **Priorität** ergibt sich aus der Reihenfolge der Geräteliste (per
   Pfeiltasten verschiebbar): Das oberste Gerät schaltet zuerst ein und
   zuletzt wieder ab (LIFO – wie ein Wasserstand, der auf- und abfüllt).
-  Fällt der Überschuss komplett weg, schaltet Optimum Watt die aktiven Geräte
-  nacheinander ab statt alle gleichzeitig – zwischen zwei Abschaltungen
-  liegen mindestens 10 Sekunden. Reicht der verbleibende Überschuss von
-  vornherein für mehrere Geräte nicht mehr, zählen auch deren
-  Ausschaltverzögerungen gleichzeitig herunter statt nacheinander.
+  Fällt der Überschuss komplett weg, schaltet Optimum Watt die aktiven
+  Geräte in dieser Reihenfolge ab, ebenfalls einzeln im Abstand der
+  „Zeit zwischen Schaltungen".
 - Pro Gerät stellst du ein, **wie lange** der Überschuss anstehen muss,
   bevor zugeschaltet wird (Einschaltverzögerung), und wie lange er
   **weg** sein muss, bevor wieder abgeschaltet wird (Ausschaltverzögerung)

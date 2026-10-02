@@ -477,14 +477,21 @@ class OptimumWattCard extends HTMLElement {
       <details class="em-settings" id="em-settings">
         <summary>Einstellungen</summary>
         <div class="em-form-row" style="margin-top: 8px;">
+          <label>Zeit zwischen Schaltungen (s)</label>
+          <input type="number" id="em-settings-stagger" min="1" step="1" placeholder="10" />
+        </div>
+        <p class="em-form-hint">
+          Mehrere Geräte können ihre Ein- bzw. Ausschaltverzögerung gleichzeitig
+          herunterzählen. Geschaltet wird aber immer nur eines nach dem anderen,
+          mit mindestens dieser Pause dazwischen – so kommt zwischen zwei
+          Schaltungen ein frischer Messwert rein, und ein Gerät, das sich dadurch
+          erledigt hat, wird nicht mehr unnötig geschaltet.
+        </p>
+        <div class="em-form-row" style="margin-top: 8px;">
           <label>Sensor-Timeout (min)</label>
           <input type="number" id="em-settings-timeout" min="0" step="1" placeholder="leer = aus" />
         </div>
-        <p class="em-form-hint">
-          Kommt vom Einspeise-Sensor so lange kein neuer Wert, werden alle aktiven
-          Schalter (außer „Regelung aus") sicherheitshalber nacheinander im
-          10-Sekunden-Takt abgeschaltet.
-        </p>
+        <p class="em-form-hint" id="em-settings-timeout-hint"></p>
         <div class="em-form-row" style="margin-top: 8px;">
           <label>Max. Netz-Ladung des Speichers (W)</label>
           <input type="number" id="em-settings-grid-charge" min="0" step="10" placeholder="0 = aus" />
@@ -553,7 +560,9 @@ class OptimumWattCard extends HTMLElement {
       addBtn: card.querySelector("#em-add-btn"),
       alert: card.querySelector("#em-alert"),
       alertText: card.querySelector("#em-alert-text"),
+      settingsStagger: card.querySelector("#em-settings-stagger"),
       settingsTimeout: card.querySelector("#em-settings-timeout"),
+      settingsTimeoutHint: card.querySelector("#em-settings-timeout-hint"),
       settingsGridCharge: card.querySelector("#em-settings-grid-charge"),
       settingsSave: card.querySelector("#em-settings-save"),
       settingsFeedback: card.querySelector("#em-settings-feedback"),
@@ -594,9 +603,16 @@ class OptimumWattCard extends HTMLElement {
     const sensor_timeout_s = raw !== "" && minutes > 0 ? Math.round(minutes * 60) : 0;
     const gcRaw = this._els.settingsGridCharge.value;
     const max_grid_charge_w = gcRaw !== "" && Number(gcRaw) > 0 ? Math.round(Number(gcRaw)) : 0;
+    const stRaw = this._els.settingsStagger.value;
+    const cascade_stagger_s = stRaw !== "" && Number(stRaw) > 0 ? Math.round(Number(stRaw)) : 10;
     this._els.settingsSave.disabled = true;
     try {
-      await this._callWS({ type: "optimum_watt/set_settings", sensor_timeout_s, max_grid_charge_w });
+      await this._callWS({
+        type: "optimum_watt/set_settings",
+        sensor_timeout_s,
+        max_grid_charge_w,
+        cascade_stagger_s,
+      });
       this._showSettingsFeedback("Gespeichert ✓", false);
     } catch (err) {
       this._showSettingsFeedback("Fehler beim Speichern", true);
@@ -639,11 +655,19 @@ class OptimumWattCard extends HTMLElement {
       : "";
 
     // Don't stomp on the field while the user is actively editing it.
+    const staggerS = state.cascade_stagger_s || 10;
+    if (document.activeElement !== this._els.settingsStagger) {
+      this._els.settingsStagger.value = String(staggerS);
+    }
     if (document.activeElement !== this._els.settingsTimeout) {
       this._els.settingsTimeout.value = state.sensor_timeout_s
         ? String(state.sensor_timeout_s / 60)
         : "";
     }
+    this._els.settingsTimeoutHint.textContent =
+      `Kommt vom Einspeise-Sensor so lange kein neuer Wert, werden alle aktiven ` +
+      `Schalter (außer „Regelung aus") sicherheitshalber nacheinander im ` +
+      `${staggerS}-Sekunden-Takt abgeschaltet.`;
     if (document.activeElement !== this._els.settingsGridCharge) {
       this._els.settingsGridCharge.value = state.max_grid_charge_w
         ? String(state.max_grid_charge_w)

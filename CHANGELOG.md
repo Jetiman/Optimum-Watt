@@ -3,6 +3,27 @@
 Die Release-Beschreibung auf GitHub wird automatisch aus dem jeweiligen
 Abschnitt hier erzeugt (siehe `.github/workflows/release.yml`).
 
+## v0.4.7 – Abschaltverzögerungen laufen jetzt parallel, nicht mehr nacheinander
+
+### Geändert
+- **Mehrere Geräte zählen ihre Ausschaltverzögerung jetzt immer gleichzeitig
+  herunter, nicht mehr erst eines nach dem anderen.** Bisher ging die
+  Abschaltprüfung davon aus, dass ein niedriger priorisiertes Gerät erst
+  wirklich abgeschaltet hat, bevor ein höher priorisiertes überhaupt einen
+  eigenen Timer bekam – sichtbar z. B. als „nur ein Gerät zeigt einen
+  Countdown, obwohl mehrere zu viel ziehen". Jetzt bewertet jedes Gerät
+  seine eigene Schwelle unabhängig von den anderen, läuft sein Timer also
+  parallel mit. Geschaltet wird am Ende trotzdem weiterhin nur ein Gerät
+  nach dem anderen (LIFO von unten nach oben) – mit einer Pause dazwischen,
+  damit zwischen zwei Schaltungen ein frischer Messwert reinkommt. Hat sich
+  die Lage dadurch schon erledigt, bricht ein wartendes Gerät seinen Timer
+  wieder ab, statt unnötig mit abzuschalten. Die Einschaltseite kannte
+  dieses Parallel-Verhalten bereits, läuft jetzt aber nach demselben,
+  einfacheren Prinzip.
+- **Die Pause zwischen zwei Schaltvorgängen ist jetzt einstellbar** (bisher
+  fest 10 Sekunden) – neues Feld **„Zeit zwischen Schaltungen"** unter
+  „Einstellungen".
+
 ## v0.4.6 – Kein falscher „schaltet ein"-Countdown mehr nach externem Ausschalten
 
 ### Behoben

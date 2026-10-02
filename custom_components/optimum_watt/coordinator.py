@@ -27,7 +27,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 import homeassistant.util.dt as dt_util
 
 from .const import (
-    CASCADE_STAGGER_S,
+    DEFAULT_CASCADE_STAGGER_S,
     CONF_GRID_POWER_ENTITY,
     CONF_INVERT,
     CONF_PV_PRODUCTION_ENTITY,
@@ -357,6 +357,8 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
         # See DEFAULT_MAX_GRID_CHARGE_W. Guards the "surplus before storage"
         # basis against counting grid-sourced battery charging as surplus.
         self.max_grid_charge_w: int = DEFAULT_MAX_GRID_CHARGE_W
+        # See DEFAULT_CASCADE_STAGGER_S.
+        self.cascade_stagger_s: int = DEFAULT_CASCADE_STAGGER_S
         self._power_last_seen: datetime | None = None
         self._production_last_seen: datetime | None = None
         self._storage_last_seen: datetime | None = None
@@ -381,6 +383,7 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
         settings = stored.get("settings", {})
         self.sensor_timeout_s = settings.get("sensor_timeout_s", DEFAULT_SENSOR_TIMEOUT_S)
         self.max_grid_charge_w = settings.get("max_grid_charge_w", DEFAULT_MAX_GRID_CHARGE_W)
+        self.cascade_stagger_s = settings.get("cascade_stagger_s", DEFAULT_CASCADE_STAGGER_S)
 
         # Start the staleness clock at startup, even if the sensor's first
         # reading turns out invalid - a sensor that's broken from the start
@@ -581,6 +584,7 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
                 "settings": {
                     "sensor_timeout_s": self.sensor_timeout_s,
                     "max_grid_charge_w": self.max_grid_charge_w,
+                    "cascade_stagger_s": self.cascade_stagger_s,
                 },
             }
         )
@@ -687,11 +691,16 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
         *,
         sensor_timeout_s: int | None = None,
         max_grid_charge_w: int | None = None,
+        cascade_stagger_s: int | None = None,
     ) -> None:
         if sensor_timeout_s is not None:
             self.sensor_timeout_s = max(int(sensor_timeout_s), 0)
         if max_grid_charge_w is not None:
             self.max_grid_charge_w = max(int(max_grid_charge_w), 0)
+        if cascade_stagger_s is not None:
+            # At least 1s - a gap of 0 would switch every expired device in
+            # the same instant, defeating the point of staggering at all.
+            self.cascade_stagger_s = max(int(cascade_stagger_s), 1)
         await self._async_save_state()
         self._notify_and_reeval()
 
@@ -744,7 +753,7 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
 
         We can no longer trust it to drive the cascade, so every switch
         (except ones set to "Regelung aus") gets shut down regardless of
-        mode, one every CASCADE_STAGGER_S so they don't all drop at once.
+        mode, one every cascade_stagger_s so they don't all drop at once.
         """
         candidates = [
             d for d in reversed(self.devices) if d.mode_effective != MODE_DISABLED and d.active
@@ -753,7 +762,7 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
             return
         if (
             self._last_cascade_off_at is not None
-            and (now - self._last_cascade_off_at).total_seconds() < CASCADE_STAGGER_S
+            and (now - self._last_cascade_off_at).total_seconds() < self.cascade_stagger_s
         ):
             return
         _LOGGER.warning(
@@ -788,42 +797,33 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
             self._roll_over_runtime(device, now_local)
             await self._evaluate_min_runtime(device, now_local)
 
-        # Turn ON: every inactive device in auto mode, in priority (list)
-        # order, that currently fits within its own threshold basis
-        # together with the higher-priority devices already reserved ahead
-        # of it - not just the first one. A big-enough surplus lets several
-        # on-delay timers run at once instead of fully serializing through
-        # each device's on_delay_s one after another; the actual switch-on
-        # actions are still spaced at least CASCADE_STAGGER_S apart below so
-        # they don't all fire in the same instant. A device that no longer
-        # fits (or is no longer first in line) has its timer cleared here
-        # too, which also prevents the stale-timer bug where a device that
-        # once briefly qualified kept counting down in the background and
-        # fired instantly (stuck "0s") once it qualified again. A running
-        # timer survives a brief dip below threshold via
+        # Turn ON: every inactive device in auto mode that currently fits
+        # its own threshold basis is evaluated independently and gets its
+        # own on-delay timer, regardless of what any other device is doing.
+        # Several devices can therefore count down in parallel whenever
+        # there's enough surplus for each of them on its own. The actual
+        # switch-on actions are still spaced at least cascade_stagger_s
+        # apart below, one device per tick where that gap has elapsed, in
+        # priority (list) order - never two at once. That gap gives the
+        # grid/production sensor time to report the previous switch-on's
+        # real draw before the next device is even considered again: if
+        # that reduces the remaining surplus below what a lower-priority
+        # device still waiting needs, its `met` flips false next tick and
+        # its timer resets via the debounce grace below, so it never fires
+        # off a stale reading. A device that no longer fits has its timer
+        # cleared here too, which also prevents the stale-timer bug where a
+        # device that once briefly qualified kept counting down in the
+        # background and fired instantly (stuck "0s") once it qualified
+        # again. A running timer survives a brief dip below threshold via
         # _debounced_still_qualifies (see there) so a single noisy reading
         # can't wipe out an almost-complete wait.
-        #
-        # `reserved_w` tracks real wattage already committed to
-        # higher-priority devices, regardless of *their* threshold basis -
-        # once one of them switches on it draws real power, which reduces
-        # what's left over for anyone below it that measures against a
-        # shared pool (surplus / surplus_pre_storage). A device measured
-        # against raw PV production isn't reduced by it though: production
-        # doesn't care how much the house is drawing.
-        reserved_w = 0.0
         for d in self.devices:
             if d.mode_effective != MODE_AUTO or d.active:
                 continue
             basis_value = self._basis_value(d.threshold_basis)
             if basis_value is None:
                 continue
-            available = (
-                basis_value
-                if d.threshold_basis == THRESHOLD_BASIS_PRODUCTION
-                else basis_value - reserved_w
-            )
-            met = available >= d.on_threshold_w
+            met = basis_value >= d.on_threshold_w
             if met and d.min_soc_percent > 0:
                 # Extra gate: normally won't switch on until the battery
                 # itself is charged enough - but only actually applies while
@@ -835,7 +835,7 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
                 # isn't taking anything away from charging and the gate is
                 # waived. Fails closed - no SoC reading, no switch-on.
                 grid_alone = self.current_power_w
-                grid_covers_it = grid_alone is not None and grid_alone - reserved_w >= d.on_threshold_w
+                grid_covers_it = grid_alone is not None and grid_alone >= d.on_threshold_w
                 if not grid_covers_it:
                     met = self.storage_soc is not None and self.storage_soc >= d.min_soc_percent
             d.surplus_met = met
@@ -845,31 +845,34 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
             if not qualifies:
                 d.surplus_since = None
                 continue
-            reserved_w += d.power_w
             if d.surplus_since is None:
                 d.surplus_since = now
             elif met and now - d.surplus_since >= timedelta(seconds=d.on_delay_s) and (
                 self._last_cascade_on_at is None
-                or (now - self._last_cascade_on_at).total_seconds() >= CASCADE_STAGGER_S
+                or (now - self._last_cascade_on_at).total_seconds() >= self.cascade_stagger_s
             ):
                 await self._turn_on(d, now)
                 self._last_cascade_on_at = now
 
-        # Turn OFF: active devices in reverse priority order (LIFO - the
-        # lowest-priority, last-in-list device first), mirroring the ON
-        # cascade above. Every active device whose own threshold is still
-        # not covered by the surplus - even after hypothetically freeing up
-        # the power of the lower-priority devices already queued to turn
-        # off ahead of it - gets its own off-delay timer running
-        # concurrently, instead of waiting for each device to actually
-        # finish turning off before the next one's timer even starts. A
-        # device that's forced on for its daily minimum runtime, or hasn't
-        # yet run its minimum time per activation, has its timer cleared
-        # here too. A running timer survives a brief spike back above
-        # threshold the same way the ON cascade does - e.g. a battery or
-        # storage system regulating and briefly overshooting into positive
-        # surplus shouldn't cancel an almost-complete off-delay wait.
-        freed_w = 0.0
+        # Turn OFF: every active device in auto mode is evaluated
+        # independently, mirroring the ON cascade above - whether its own
+        # threshold basis still covers it if it were off (own power added
+        # back, see below) gets checked purely on its own, without assuming
+        # any other device has already turned off. Several devices can
+        # therefore count their own off-delay down in parallel. The actual
+        # switch-off actions still happen one at a time, in reverse priority
+        # order (LIFO - the lowest-priority, last-in-list device first),
+        # spaced at least cascade_stagger_s apart below: once the
+        # lowest-priority expired device actually switches off, the next
+        # tick's fresh sensor reading may already cover a higher-priority
+        # one that was also counting down, clearing its timer before its
+        # turn comes. A device that's forced on for its daily minimum
+        # runtime, or hasn't yet run its minimum time per activation, has
+        # its timer cleared here too. A running timer survives a brief
+        # spike back above threshold the same way the ON cascade does -
+        # e.g. a battery or storage system regulating and briefly
+        # overshooting into positive surplus shouldn't cancel an
+        # almost-complete off-delay wait.
         for d in reversed(self.devices):
             if d.mode_effective != MODE_AUTO or not d.active:
                 continue
@@ -889,7 +892,7 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
             available = (
                 basis_value
                 if d.threshold_basis == THRESHOLD_BASIS_PRODUCTION
-                else basis_value + freed_w + d.power_w
+                else basis_value + d.power_w
             )
             met = available < d.off_threshold_w
             d.deficit_met = met
@@ -899,12 +902,11 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
             if not qualifies:
                 d.deficit_since = None
                 continue
-            freed_w += d.power_w
             if d.deficit_since is None:
                 d.deficit_since = now
             elif met and now - d.deficit_since >= timedelta(seconds=d.off_delay_s) and (
                 self._last_cascade_off_at is None
-                or (now - self._last_cascade_off_at).total_seconds() >= CASCADE_STAGGER_S
+                or (now - self._last_cascade_off_at).total_seconds() >= self.cascade_stagger_s
             ):
                 await self._turn_off(d)
                 self._last_cascade_off_at = now
@@ -1190,6 +1192,7 @@ class OptimumWattCoordinator(DataUpdateCoordinator[None]):
             "sensor_timeout_s": self.sensor_timeout_s,
             "sensor_stale": self._is_sensor_stale(dt_util.utcnow()),
             "max_grid_charge_w": self.max_grid_charge_w,
+            "cascade_stagger_s": self.cascade_stagger_s,
             "grid_charge_w": self.grid_charge_w,
             "pre_storage_grid_blocked": self.pre_storage_grid_blocked,
             "devices": [

@@ -198,6 +198,7 @@ async def ws_set_auto_mode(hass, connection, msg):
         vol.Required("entry_id"): str,
         vol.Optional("sensor_timeout_s"): vol.Coerce(int),
         vol.Optional("max_grid_charge_w"): vol.Coerce(int),
+        vol.Optional("cascade_stagger_s"): vol.Coerce(int),
     }
 )
 @websocket_api.require_admin
@@ -210,6 +211,7 @@ async def ws_set_settings(hass, connection, msg):
     await coordinator.async_set_settings(
         sensor_timeout_s=msg.get("sensor_timeout_s"),
         max_grid_charge_w=msg.get("max_grid_charge_w"),
+        cascade_stagger_s=msg.get("cascade_stagger_s"),
     )
     connection.send_result(msg["id"], coordinator.state_dict())
 
