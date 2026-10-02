@@ -13,7 +13,15 @@ import voluptuous as vol
 from homeassistant.components import websocket_api
 from homeassistant.core import HomeAssistant, callback
 
-from .const import DOMAIN, MODE_AUTO, MODE_DISABLED, MODE_OFF, MODE_ON, THRESHOLD_BASES
+from .const import (
+    CASCADE_MODES,
+    DOMAIN,
+    MODE_AUTO,
+    MODE_DISABLED,
+    MODE_OFF,
+    MODE_ON,
+    THRESHOLD_BASES,
+)
 from .coordinator import OptimumWattCoordinator
 
 # Local "HH:MM" time of day, e.g. "19:00" - the deadline for a device's
@@ -199,6 +207,7 @@ async def ws_set_auto_mode(hass, connection, msg):
         vol.Optional("sensor_timeout_s"): vol.Coerce(int),
         vol.Optional("max_grid_charge_w"): vol.Coerce(int),
         vol.Optional("cascade_stagger_s"): vol.Coerce(int),
+        vol.Optional("cascade_mode"): vol.In(CASCADE_MODES),
     }
 )
 @websocket_api.require_admin
@@ -212,6 +221,7 @@ async def ws_set_settings(hass, connection, msg):
         sensor_timeout_s=msg.get("sensor_timeout_s"),
         max_grid_charge_w=msg.get("max_grid_charge_w"),
         cascade_stagger_s=msg.get("cascade_stagger_s"),
+        cascade_mode=msg.get("cascade_mode"),
     )
     connection.send_result(msg["id"], coordinator.state_dict())
 

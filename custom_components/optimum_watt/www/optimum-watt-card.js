@@ -477,15 +477,22 @@ class OptimumWattCard extends HTMLElement {
       <details class="em-settings" id="em-settings">
         <summary>Einstellungen</summary>
         <div class="em-form-row" style="margin-top: 8px;">
+          <label>Verzögerungen</label>
+          <select id="em-settings-cascade-mode">
+            <option value="parallel">Parallel (empfohlen)</option>
+            <option value="sequential">Nacheinander (klassisch)</option>
+          </select>
+        </div>
+        <p class="em-form-hint" id="em-settings-cascade-mode-hint"></p>
+        <div class="em-form-row" style="margin-top: 8px;">
           <label>Zeit zwischen Schaltungen (s)</label>
           <input type="number" id="em-settings-stagger" min="1" step="1" placeholder="10" />
         </div>
         <p class="em-form-hint">
-          Mehrere Geräte können ihre Ein- bzw. Ausschaltverzögerung gleichzeitig
-          herunterzählen. Geschaltet wird aber immer nur eines nach dem anderen,
-          mit mindestens dieser Pause dazwischen – so kommt zwischen zwei
-          Schaltungen ein frischer Messwert rein, und ein Gerät, das sich dadurch
-          erledigt hat, wird nicht mehr unnötig geschaltet.
+          Geschaltet wird immer nur ein Gerät nach dem anderen, mit mindestens
+          dieser Pause dazwischen – so kommt zwischen zwei Schaltungen ein
+          frischer Messwert rein, und ein Gerät, das sich dadurch erledigt hat,
+          wird nicht mehr unnötig geschaltet.
         </p>
         <div class="em-form-row" style="margin-top: 8px;">
           <label>Sensor-Timeout (min)</label>
@@ -560,6 +567,8 @@ class OptimumWattCard extends HTMLElement {
       addBtn: card.querySelector("#em-add-btn"),
       alert: card.querySelector("#em-alert"),
       alertText: card.querySelector("#em-alert-text"),
+      settingsCascadeMode: card.querySelector("#em-settings-cascade-mode"),
+      settingsCascadeModeHint: card.querySelector("#em-settings-cascade-mode-hint"),
       settingsStagger: card.querySelector("#em-settings-stagger"),
       settingsTimeout: card.querySelector("#em-settings-timeout"),
       settingsTimeoutHint: card.querySelector("#em-settings-timeout-hint"),
@@ -576,6 +585,7 @@ class OptimumWattCard extends HTMLElement {
     this._els.autoIcon.addEventListener("click", () => this._toggleAuto());
     this._els.addBtn.addEventListener("click", () => this._openAdd());
     this._els.settingsSave.addEventListener("click", () => this._saveSettings());
+    this._els.settingsCascadeMode.addEventListener("change", () => this._updateCascadeModeHint());
 
     card.querySelector("#em-sched-cancel").addEventListener("click", () => this._closeScheduleEditor());
     card.querySelector("#em-sched-save").addEventListener("click", () => this._saveScheduleEditor());
@@ -597,6 +607,18 @@ class OptimumWattCard extends HTMLElement {
     }, 3000);
   }
 
+  _updateCascadeModeHint() {
+    this._els.settingsCascadeModeHint.textContent =
+      this._els.settingsCascadeMode.value === "sequential"
+        ? "Ein Gerät bekommt erst dann eine eigene Verzögerung, wenn die " +
+          "höher- (beim Einschalten) bzw. niedriger priorisierten (beim " +
+          "Ausschalten) Geräte bereits mit eingerechnet sind - es laufen also " +
+          "nie mehr Verzögerungen gleichzeitig, als der Überschuss gerade hergibt."
+        : "Jedes Gerät zählt seine eigene Verzögerung unabhängig von den " +
+          "anderen herunter - mehrere Geräte können also gleichzeitig warten. " +
+          "Geschaltet wird trotzdem weiterhin nur eines nach dem anderen (siehe unten).";
+  }
+
   async _saveSettings() {
     const raw = this._els.settingsTimeout.value;
     const minutes = Number(raw);
@@ -605,6 +627,7 @@ class OptimumWattCard extends HTMLElement {
     const max_grid_charge_w = gcRaw !== "" && Number(gcRaw) > 0 ? Math.round(Number(gcRaw)) : 0;
     const stRaw = this._els.settingsStagger.value;
     const cascade_stagger_s = stRaw !== "" && Number(stRaw) > 0 ? Math.round(Number(stRaw)) : 10;
+    const cascade_mode = this._els.settingsCascadeMode.value || "parallel";
     this._els.settingsSave.disabled = true;
     try {
       await this._callWS({
@@ -612,6 +635,7 @@ class OptimumWattCard extends HTMLElement {
         sensor_timeout_s,
         max_grid_charge_w,
         cascade_stagger_s,
+        cascade_mode,
       });
       this._showSettingsFeedback("Gespeichert ✓", false);
     } catch (err) {
@@ -656,6 +680,10 @@ class OptimumWattCard extends HTMLElement {
 
     // Don't stomp on the field while the user is actively editing it.
     const staggerS = state.cascade_stagger_s || 10;
+    if (document.activeElement !== this._els.settingsCascadeMode) {
+      this._els.settingsCascadeMode.value = state.cascade_mode === "sequential" ? "sequential" : "parallel";
+    }
+    this._updateCascadeModeHint();
     if (document.activeElement !== this._els.settingsStagger) {
       this._els.settingsStagger.value = String(staggerS);
     }

@@ -3,7 +3,7 @@
 Die Release-Beschreibung auf GitHub wird automatisch aus dem jeweiligen
 Abschnitt hier erzeugt (siehe `.github/workflows/release.yml`).
 
-## v0.4.7 – Abschaltverzögerungen laufen jetzt parallel, nicht mehr nacheinander
+## v0.4.7 – Parallele Verzögerungen (einstellbar), statt fest nacheinander
 
 ### Geändert
 - **Mehrere Geräte zählen ihre Ausschaltverzögerung jetzt immer gleichzeitig
@@ -23,6 +23,13 @@ Abschnitt hier erzeugt (siehe `.github/workflows/release.yml`).
 - **Die Pause zwischen zwei Schaltvorgängen ist jetzt einstellbar** (bisher
   fest 10 Sekunden) – neues Feld **„Zeit zwischen Schaltungen"** unter
   „Einstellungen".
+- **Neu: Unter „Einstellungen" lässt sich zwischen „Parallel" (Standard,
+  s. o.) und „Nacheinander" (das bisherige, klassische Verhalten) wählen.**
+  Im Modus „Nacheinander" bekommt ein Gerät seine eigene Verzögerung erst,
+  sobald die höher- (beim Einschalten) bzw. niedriger priorisierten (beim
+  Ausschalten) Geräte bereits mit eingerechnet sind – es laufen also nie
+  mehr Verzögerungen gleichzeitig, als der Überschuss gerade für alle
+  zusammen hergibt.
 
 ## v0.4.6 – Kein falscher „schaltet ein"-Countdown mehr nach externem Ausschalten
 

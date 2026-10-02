@@ -35,6 +35,22 @@ UPDATE_INTERVAL = timedelta(seconds=10)
 # whether the next one is still needed before it fires.
 DEFAULT_CASCADE_STAGGER_S = 10
 
+# How the on/off-delay timers of several candidate devices relate to each
+# other - see Coordinator.cascade_mode and the ON/OFF loops in _evaluate().
+#   parallel   - every device's timer runs purely off its own threshold,
+#                independent of the others, so several can count down at
+#                once. The actual switch actions are still serialized,
+#                DEFAULT_CASCADE_STAGGER_S apart (see above).
+#   sequential - the classic behaviour: a device's timer only starts once
+#                enough of its higher-priority (ON) or lower-priority (OFF)
+#                neighbours have already claimed/freed their share, so at
+#                most as many timers run at once as the surplus currently
+#                covers.
+CASCADE_MODE_PARALLEL = "parallel"
+CASCADE_MODE_SEQUENTIAL = "sequential"
+CASCADE_MODES = [CASCADE_MODE_PARALLEL, CASCADE_MODE_SEQUENTIAL]
+DEFAULT_CASCADE_MODE = CASCADE_MODE_PARALLEL
+
 # How long the opposite condition must persist before an on/off delay timer
 # actually gets reset, so a brief reading blip (e.g. a battery/storage
 # regulating and briefly overshooting the threshold) doesn't wipe out an
