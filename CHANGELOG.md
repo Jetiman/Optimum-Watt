@@ -12,6 +12,9 @@ Abschnitt hier erzeugt (siehe `.github/workflows/release.yml`).
   Automatik. Optional lässt sich „Regelung aus" einblenden
   (`show_disabled`). Bearbeiten, Löschen und Sortieren bleiben der großen
   Karte vorbehalten.
+- **Neue Option `show_power` für die Schnellsteuerung-Karte:** zeigt hinter
+  dem Gerätenamen den aktuellen Verbrauch an, gelesen aus dem ersten
+  zusätzlichen Sensor des Geräts mit Einheit W oder kW.
 
 ## v0.4.7 – Parallele Verzögerungen (einstellbar), statt fest nacheinander
 

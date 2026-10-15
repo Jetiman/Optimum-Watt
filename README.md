@@ -193,13 +193,16 @@ ein Fenster aktiv ist, überschreibt es den gewählten Modus des Geräts
 
 Für den Alltag gibt es zusätzlich eine kompakte Karte ohne Bearbeiten und
 Löschen: pro Gerät eine Zeile mit Status und den Buttons **Auto / An / Aus**,
-oben ein Umschalter für die globale Automatik.
+oben ein Umschalter für die globale Automatik. Mit `show_power` erscheint
+hinter dem Namen der aktuelle Verbrauch – er kommt aus dem ersten
+**zusätzlichen Sensor** des Geräts, der in W oder kW misst.
 
 ```yaml
 type: custom:optimum-watt-control-card
 title: Geräte            # optional
 show_disabled: false     # true blendet zusätzlich „Regelung aus" ein
 show_auto_switch: true   # false blendet den Automatik-Umschalter aus
+show_power: false        # true zeigt den aktuellen Verbrauch hinter dem Namen
 entry_id: 01H...         # optional, nur bei mehreren Instanzen
 ```
 

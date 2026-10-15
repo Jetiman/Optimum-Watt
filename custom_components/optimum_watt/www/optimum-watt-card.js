@@ -1234,7 +1234,9 @@ window.customCards.push({
  * editing - meant for everyday dashboards next to the full card.
  *
  * Config: title (string), entry_id (string), show_disabled (bool, default
- * false), show_auto_switch (bool, default true).
+ * false), show_auto_switch (bool, default true), show_power (bool, default
+ * false: shows the device's current consumption next to its name, taken
+ * from its first additional sensor that reports W or kW).
  */
 class OptimumWattControlCard extends HTMLElement {
   setConfig(config) {
@@ -1265,6 +1267,7 @@ class OptimumWattControlCard extends HTMLElement {
             .ow-dot.bad { background:var(--error-color, #db4437); }
             .ow-main { flex:1; min-width:120px; }
             .ow-name { font-weight:500; }
+            .ow-power { font-weight:400; font-size:0.85em; margin-left:8px; color:var(--secondary-text-color); }
             .ow-sub { font-size:0.8em; color:var(--secondary-text-color); }
             .ow-modes { display:flex; gap:4px; }
             .ow-modes button { border:none; border-radius:6px; padding:6px 10px; cursor:pointer; background:var(--secondary-background-color); color:var(--primary-text-color); font-size:0.85em; }
@@ -1383,10 +1386,20 @@ class OptimumWattControlCard extends HTMLElement {
         const t = fmtSeconds(device.remaining_seconds);
         sub += device.active ? ` · schaltet in ${t} ab` : ` · schaltet in ${t} ein`;
       }
+      let powerHtml = "";
+      if (this._config.show_power) {
+        const reading = (device.info_readings || []).find(
+          (r) => (r.unit === "W" || r.unit === "kW") && Number.isFinite(parseFloat(r.state))
+        );
+        if (reading) {
+          const w = parseFloat(reading.state) * (reading.unit === "kW" ? 1000 : 1);
+          powerHtml = `<span class="ow-power">${escapeHtml(fmtPower(w))}</span>`;
+        }
+      }
       row.innerHTML = `
         <span class="ow-dot ${dot}"></span>
         <div class="ow-main">
-          <div class="ow-name">${escapeHtml(device.name)}</div>
+          <div class="ow-name">${escapeHtml(device.name)}${powerHtml}</div>
           <div class="ow-sub">${escapeHtml(sub)}</div>
         </div>
         <div class="ow-modes">
