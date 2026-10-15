@@ -3,6 +3,16 @@
 Die Release-Beschreibung auf GitHub wird automatisch aus dem jeweiligen
 Abschnitt hier erzeugt (siehe `.github/workflows/release.yml`).
 
+## v0.4.8 – Schnellsteuerung-Karte
+
+### Neu
+- **Neue kompakte Dashboard-Karte `custom:optimum-watt-control-card`.**
+  Zeigt pro Gerät Status, Restzeit bis zur nächsten Schaltung und die
+  Buttons Auto / An / Aus, dazu einen Umschalter für die globale
+  Automatik. Optional lässt sich „Regelung aus" einblenden
+  (`show_disabled`). Bearbeiten, Löschen und Sortieren bleiben der großen
+  Karte vorbehalten.
+
 ## v0.4.7 – Parallele Verzögerungen (einstellbar), statt fest nacheinander
 
 ### Geändert

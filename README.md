@@ -189,6 +189,20 @@ Wochentage) mit fester Aktion **Auto / An / Aus / Regelung aus**. Solange
 ein Fenster aktiv ist, überschreibt es den gewählten Modus des Geräts
 (z. B. „Mo–Fr 22:00–06:00 → Aus"). Fenster über Mitternacht sind erlaubt.
 
+### Schnellsteuerung-Karte
+
+Für den Alltag gibt es zusätzlich eine kompakte Karte ohne Bearbeiten und
+Löschen: pro Gerät eine Zeile mit Status und den Buttons **Auto / An / Aus**,
+oben ein Umschalter für die globale Automatik.
+
+```yaml
+type: custom:optimum-watt-control-card
+title: Geräte            # optional
+show_disabled: false     # true blendet zusätzlich „Regelung aus" ein
+show_auto_switch: true   # false blendet den Automatik-Umschalter aus
+entry_id: 01H...         # optional, nur bei mehreren Instanzen
+```
+
 <p align="center">
   <img src="assets/screenshot-list.jpg" width="360" alt="Optimum Watt Geräteliste">
 </p>

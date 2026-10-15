@@ -1229,6 +1229,189 @@ window.customCards.push({
 });
 
 /**
+ * Compact quick-control card: one row per device with Auto / An / Aus
+ * (and optionally "Regelung aus"), plus the global automatic switch. No
+ * editing - meant for everyday dashboards next to the full card.
+ *
+ * Config: title (string), entry_id (string), show_disabled (bool, default
+ * false), show_auto_switch (bool, default true).
+ */
+class OptimumWattControlCard extends HTMLElement {
+  setConfig(config) {
+    this._config = config || {};
+    this._built = false;
+  }
+
+  getCardSize() {
+    return 2 + (this._latestState?.devices?.length ?? 2);
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    if (!this._built) {
+      this.innerHTML = `
+        <ha-card>
+          <style>
+            .ow-head { display:flex; align-items:center; gap:8px; padding:12px 16px 4px; }
+            .ow-title { flex:1; font-size:1.1em; font-weight:500; }
+            .ow-auto { border:none; border-radius:14px; padding:4px 12px; cursor:pointer; font-size:0.8em; background:var(--secondary-background-color); color:var(--primary-text-color); }
+            .ow-auto.active { background:var(--primary-color); color:var(--text-primary-color, #fff); }
+            .ow-list { padding:4px 16px 12px; }
+            .ow-row { display:flex; align-items:center; gap:10px; padding:8px 0; flex-wrap:wrap; }
+            .ow-row + .ow-row { border-top:1px solid var(--divider-color); }
+            .ow-dot { width:10px; height:10px; border-radius:50%; background:var(--disabled-text-color); flex-shrink:0; }
+            .ow-dot.on { background:var(--success-color, #4caf50); }
+            .ow-dot.pending { background:var(--warning-color, #ffa726); }
+            .ow-dot.bad { background:var(--error-color, #db4437); }
+            .ow-main { flex:1; min-width:120px; }
+            .ow-name { font-weight:500; }
+            .ow-sub { font-size:0.8em; color:var(--secondary-text-color); }
+            .ow-modes { display:flex; gap:4px; }
+            .ow-modes button { border:none; border-radius:6px; padding:6px 10px; cursor:pointer; background:var(--secondary-background-color); color:var(--primary-text-color); font-size:0.85em; }
+            .ow-modes button.active { background:var(--primary-color); color:var(--text-primary-color, #fff); font-weight:600; }
+            .ow-empty { padding:16px; color:var(--secondary-text-color); }
+          </style>
+          <div class="ow-head"><div class="ow-title"></div><button class="ow-auto" hidden></button></div>
+          <div class="ow-list"></div>
+        </ha-card>`;
+      this._titleEl = this.querySelector(".ow-title");
+      this._autoBtn = this.querySelector(".ow-auto");
+      this._list = this.querySelector(".ow-list");
+      this._autoBtn.addEventListener("click", () => this._toggleAuto());
+      this._titleEl.textContent = this._config.title ?? "Optimum Watt";
+      this._built = true;
+    }
+    if (!this._subscribed) this._subscribe();
+  }
+
+  connectedCallback() {
+    if (this._built && this._hass && !this._subscribed) this._subscribe();
+  }
+
+  disconnectedCallback() {
+    if (this._unsubscribe) {
+      this._unsubscribe();
+      this._unsubscribe = null;
+    }
+    this._subscribed = false;
+  }
+
+  async _subscribe() {
+    if (!this._hass || this._subscribed) return;
+    this._subscribed = true;
+    if (!this._entryId) {
+      this._entryId = this._config.entry_id;
+      if (!this._entryId) {
+        try {
+          const entries = await this._hass.callWS({ type: "config_entries/get" });
+          this._entryId = entries.find((e) => e.domain === "optimum_watt")?.entry_id;
+        } catch (err) {
+          // handled below
+        }
+      }
+    }
+    if (!this._entryId) {
+      this._subscribed = false;
+      this._list.innerHTML = '<div class="ow-empty">Keine Optimum-Watt-Instanz gefunden.</div>';
+      return;
+    }
+    try {
+      this._unsubscribe = await this._hass.connection.subscribeMessage(
+        (state) => {
+          this._latestState = state;
+          this._render();
+        },
+        { type: "optimum_watt/subscribe", entry_id: this._entryId }
+      );
+    } catch (err) {
+      this._subscribed = false;
+    }
+  }
+
+  _call(payload) {
+    return this._hass.connection.sendMessagePromise({ entry_id: this._entryId, ...payload });
+  }
+
+  _toggleAuto() {
+    const state = this._latestState;
+    if (!state) return;
+    state.auto_mode = !state.auto_mode;
+    this._render();
+    this._call({ type: "optimum_watt/set_auto_mode", enabled: state.auto_mode });
+  }
+
+  _setMode(device, mode) {
+    // Optimistic update; the next pushed state confirms it.
+    device.mode = mode;
+    device.remaining_seconds = null;
+    if (mode === "disabled") device.status = "disabled";
+    else if (mode === "on") device.status = "manual_on";
+    else if (mode === "off") device.status = "manual_off";
+    else device.status = device.active ? "auto_on" : "auto_off";
+    this._render();
+    this._call({ type: "optimum_watt/update_device", device_id: device.id, mode });
+  }
+
+  _render() {
+    const state = this._latestState;
+    if (!state || !this._list) return;
+    const showAuto = this._config.show_auto_switch !== false;
+    this._autoBtn.hidden = !showAuto;
+    this._autoBtn.textContent = state.auto_mode ? "Automatik an" : "Automatik aus";
+    this._autoBtn.classList.toggle("active", !!state.auto_mode);
+
+    const modes = [["auto", "Auto"], ["on", "An"], ["off", "Aus"]];
+    if (this._config.show_disabled) modes.push(["disabled", "Regelung aus"]);
+
+    this._list.innerHTML = "";
+    if (!state.devices.length) {
+      this._list.innerHTML = '<div class="ow-empty">Noch keine Geräte angelegt.</div>';
+      return;
+    }
+    state.devices.forEach((device) => {
+      const row = document.createElement("div");
+      row.className = "ow-row";
+      const pending = device.remaining_seconds !== null && device.remaining_seconds !== undefined;
+      let dot = "";
+      if (device.switch_unreachable) dot = "bad";
+      else if (device.mode === "disabled") dot = "";
+      else if (device.active) dot = "on";
+      else if (pending) dot = "pending";
+      let sub = STATUS_LABELS[device.status] || device.status;
+      if (device.switch_unreachable) sub = "⚠ Schalter nicht erreichbar";
+      else if (pending) {
+        const t = fmtSeconds(device.remaining_seconds);
+        sub += device.active ? ` · schaltet in ${t} ab` : ` · schaltet in ${t} ein`;
+      }
+      row.innerHTML = `
+        <span class="ow-dot ${dot}"></span>
+        <div class="ow-main">
+          <div class="ow-name">${escapeHtml(device.name)}</div>
+          <div class="ow-sub">${escapeHtml(sub)}</div>
+        </div>
+        <div class="ow-modes">
+          ${modes.map(([m, label]) => `<button data-mode="${m}" class="${device.mode === m ? "active" : ""}">${label}</button>`).join("")}
+        </div>`;
+      row.querySelectorAll(".ow-modes button").forEach((btn) => {
+        btn.addEventListener("click", () => this._setMode(device, btn.getAttribute("data-mode")));
+      });
+      this._list.appendChild(row);
+    });
+  }
+
+  static getStubConfig() {
+    return { type: "custom:optimum-watt-control-card", title: "Geräte" };
+  }
+}
+
+customElements.define("optimum-watt-control-card", OptimumWattControlCard);
+window.customCards.push({
+  type: "optimum-watt-control-card",
+  name: "Optimum Watt – Schnellsteuerung",
+  description: "Kompakte Karte: Geräte manuell auf Auto / An / Aus stellen.",
+});
+
+/**
  * Full-page wrapper around optimum-watt-card, used as the sidebar panel so the
  * interface is reachable with a single click without building a dashboard.
  */
