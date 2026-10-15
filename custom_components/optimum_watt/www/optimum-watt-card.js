@@ -1392,8 +1392,8 @@ class OptimumWattControlCard extends HTMLElement {
           (r) => (r.unit === "W" || r.unit === "kW") && Number.isFinite(parseFloat(r.state))
         );
         if (reading) {
-          const w = parseFloat(reading.state) * (reading.unit === "kW" ? 1000 : 1);
-          powerHtml = `<span class="ow-power">${escapeHtml(fmtPower(w))}</span>`;
+          // Show the sensor's own value and precision, no rounding.
+          powerHtml = `<span class="ow-power">${escapeHtml(`${reading.state} ${reading.unit}`)}</span>`;
         }
       }
       row.innerHTML = `
