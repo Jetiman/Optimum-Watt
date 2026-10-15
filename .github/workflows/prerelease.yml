@@ -48,7 +48,7 @@ jobs:
           git push origin "refs/tags/${{ steps.t.outputs.tag }}"
 
       - name: Publish the beta pre-release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.t.outputs.tag }}
           name: Optimum Watt ${{ steps.t.outputs.tag }}
