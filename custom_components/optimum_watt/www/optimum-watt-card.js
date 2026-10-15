@@ -1412,12 +1412,74 @@ class OptimumWattControlCard extends HTMLElement {
     });
   }
 
+  static getConfigElement() {
+    return document.createElement("optimum-watt-control-card-editor");
+  }
+
   static getStubConfig() {
     return { type: "custom:optimum-watt-control-card", title: "Geräte" };
   }
 }
 
 customElements.define("optimum-watt-control-card", OptimumWattControlCard);
+
+/** Visual editor for the quick-control card, built on HA's own ha-form. */
+class OptimumWattControlCardEditor extends HTMLElement {
+  static SCHEMA = [
+    { name: "title", selector: { text: {} } },
+    { name: "show_power", selector: { boolean: {} } },
+    { name: "show_auto_switch", selector: { boolean: {} } },
+    { name: "show_disabled", selector: { boolean: {} } },
+  ];
+
+  static LABELS = {
+    title: "Titel",
+    show_power: "Verbrauch hinter dem Namen anzeigen",
+    show_auto_switch: "Automatik-Umschalter anzeigen",
+    show_disabled: "Button „Regelung aus“ anzeigen",
+  };
+
+  setConfig(config) {
+    this._config = config || {};
+    this._update();
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    this._update();
+  }
+
+  _update() {
+    if (!this._hass || !this._config) return;
+    if (!this._form) {
+      this._form = document.createElement("ha-form");
+      this._form.schema = OptimumWattControlCardEditor.SCHEMA;
+      this._form.computeLabel = (item) => OptimumWattControlCardEditor.LABELS[item.name] || item.name;
+      this._form.addEventListener("value-changed", (ev) => {
+        ev.stopPropagation();
+        this._config = { ...this._config, ...ev.detail.value };
+        this.dispatchEvent(
+          new CustomEvent("config-changed", {
+            detail: { config: this._config },
+            bubbles: true,
+            composed: true,
+          })
+        );
+      });
+      this.appendChild(this._form);
+    }
+    this._form.hass = this._hass;
+    this._form.data = {
+      title: "Optimum Watt",
+      show_power: false,
+      show_auto_switch: true,
+      show_disabled: false,
+      ...this._config,
+    };
+  }
+}
+
+customElements.define("optimum-watt-control-card-editor", OptimumWattControlCardEditor);
 window.customCards.push({
   type: "optimum-watt-control-card",
   name: "Optimum Watt – Schnellsteuerung",
