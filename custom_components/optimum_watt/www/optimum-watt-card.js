@@ -41,6 +41,19 @@ const THRESHOLD_BASIS_OPTIONS = [
   },
 ];
 
+// The integration registers this file under a new ?v=<hash> URL on every
+// reload, so a browser can end up running an older copy and this one in the
+// same page. Defining an element twice throws and would abort the rest of
+// this file, so every define / card registration is idempotent.
+function defineOnce(name, cls) {
+  if (!customElements.get(name)) customElements.define(name, cls);
+}
+
+window.customCards = window.customCards || [];
+function pushCard(def) {
+  if (!window.customCards.some((c) => c.type === def.type)) window.customCards.push(def);
+}
+
 function fmtMinutes(seconds) {
   if (seconds === null || seconds === undefined) return "–";
   return Math.round(seconds / 60).toString();
@@ -1219,10 +1232,9 @@ class OptimumWattCard extends HTMLElement {
   }
 }
 
-customElements.define("optimum-watt-card", OptimumWattCard);
+defineOnce("optimum-watt-card", OptimumWattCard);
 
-window.customCards = window.customCards || [];
-window.customCards.push({
+pushCard({
   type: "optimum-watt-card",
   name: "Optimum Watt",
   description: "PV-Überschuss-Kaskadensteuerung: Geräte anlegen, priorisieren und live steuern.",
@@ -1426,7 +1438,7 @@ class OptimumWattControlCard extends HTMLElement {
   }
 }
 
-customElements.define("optimum-watt-control-card", OptimumWattControlCard);
+defineOnce("optimum-watt-control-card", OptimumWattControlCard);
 
 /** Visual editor for the quick-control card, built on HA's own ha-form. */
 class OptimumWattControlCardEditor extends HTMLElement {
@@ -1487,8 +1499,8 @@ class OptimumWattControlCardEditor extends HTMLElement {
   }
 }
 
-customElements.define("optimum-watt-control-card-editor", OptimumWattControlCardEditor);
-window.customCards.push({
+defineOnce("optimum-watt-control-card-editor", OptimumWattControlCardEditor);
+pushCard({
   type: "optimum-watt-control-card",
   name: "Optimum Watt – Schnellsteuerung",
   description: "Kompakte Karte: Geräte manuell auf Auto / An / Aus stellen.",
@@ -1551,4 +1563,4 @@ class OptimumWattPanel extends HTMLElement {
   set route(route) {}
 }
 
-customElements.define("optimum-watt-panel", OptimumWattPanel);
+defineOnce("optimum-watt-panel", OptimumWattPanel);
