@@ -15,6 +15,10 @@ Abschnitt hier erzeugt (siehe `.github/workflows/release.yml`).
 - **Neue Option `show_power` für die Schnellsteuerung-Karte:** zeigt hinter
   dem Gerätenamen den aktuellen Verbrauch an, gelesen aus dem ersten
   zusätzlichen Sensor des Geräts mit Einheit W oder kW.
+- **Neue Option `show_controls` (Standard an):** mit `false` zeigt die
+  Schnellsteuerung-Karte nur an – ohne Auto/An/Aus-Buttons, der
+  Automatik-Umschalter ist dann nicht klickbar. Auch im visuellen Editor
+  einstellbar.
 
 ## v0.4.7 – Parallele Verzögerungen (einstellbar), statt fest nacheinander
 

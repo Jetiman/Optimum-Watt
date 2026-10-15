@@ -203,6 +203,7 @@ title: Geräte            # optional
 show_disabled: false     # true blendet zusätzlich „Regelung aus" ein
 show_auto_switch: true   # false blendet den Automatik-Umschalter aus
 show_power: false        # true zeigt den aktuellen Verbrauch hinter dem Namen
+show_controls: true      # false = nur Anzeige, ohne Buttons (Automatik-Umschalter nicht klickbar)
 entry_id: 01H...         # optional, nur bei mehreren Instanzen
 ```
 

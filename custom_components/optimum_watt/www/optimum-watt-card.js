@@ -1236,7 +1236,9 @@ window.customCards.push({
  * Config: title (string), entry_id (string), show_disabled (bool, default
  * false), show_auto_switch (bool, default true), show_power (bool, default
  * false: shows the device's current consumption next to its name, taken
- * from its first additional sensor that reports W or kW).
+ * from its first additional sensor that reports W or kW), show_controls (bool,
+ * default true; false = display only: no mode buttons, the automatic badge
+ * is not clickable).
  */
 class OptimumWattControlCard extends HTMLElement {
   setConfig(config) {
@@ -1362,6 +1364,9 @@ class OptimumWattControlCard extends HTMLElement {
     this._autoBtn.hidden = !showAuto;
     this._autoBtn.textContent = state.auto_mode ? "Automatik an" : "Automatik aus";
     this._autoBtn.classList.toggle("active", !!state.auto_mode);
+    const controls = this._config.show_controls !== false;
+    this._autoBtn.disabled = !controls;
+    this._autoBtn.style.cursor = controls ? "pointer" : "default";
 
     const modes = [["auto", "Auto"], ["on", "An"], ["off", "Aus"]];
     if (this._config.show_disabled) modes.push(["disabled", "Regelung aus"]);
@@ -1402,9 +1407,9 @@ class OptimumWattControlCard extends HTMLElement {
           <div class="ow-name">${escapeHtml(device.name)}${powerHtml}</div>
           <div class="ow-sub">${escapeHtml(sub)}</div>
         </div>
-        <div class="ow-modes">
+        ${controls ? `<div class="ow-modes">
           ${modes.map(([m, label]) => `<button data-mode="${m}" class="${device.mode === m ? "active" : ""}">${label}</button>`).join("")}
-        </div>`;
+        </div>` : ""}`;
       row.querySelectorAll(".ow-modes button").forEach((btn) => {
         btn.addEventListener("click", () => this._setMode(device, btn.getAttribute("data-mode")));
       });
@@ -1428,6 +1433,7 @@ class OptimumWattControlCardEditor extends HTMLElement {
   static SCHEMA = [
     { name: "title", selector: { text: {} } },
     { name: "show_power", selector: { boolean: {} } },
+    { name: "show_controls", selector: { boolean: {} } },
     { name: "show_auto_switch", selector: { boolean: {} } },
     { name: "show_disabled", selector: { boolean: {} } },
   ];
@@ -1435,6 +1441,7 @@ class OptimumWattControlCardEditor extends HTMLElement {
   static LABELS = {
     title: "Titel",
     show_power: "Verbrauch hinter dem Namen anzeigen",
+    show_controls: "Bedien-Buttons anzeigen (aus = nur Anzeige)",
     show_auto_switch: "Automatik-Umschalter anzeigen",
     show_disabled: "Button „Regelung aus“ anzeigen",
   };
@@ -1472,6 +1479,7 @@ class OptimumWattControlCardEditor extends HTMLElement {
     this._form.data = {
       title: "Optimum Watt",
       show_power: false,
+      show_controls: true,
       show_auto_switch: true,
       show_disabled: false,
       ...this._config,
