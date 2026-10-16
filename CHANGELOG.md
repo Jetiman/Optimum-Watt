@@ -3,12 +3,16 @@
 Die Release-Beschreibung auf GitHub wird automatisch aus dem jeweiligen
 Abschnitt hier erzeugt (siehe `.github/workflows/release.yml`).
 
-## v0.4.8 – Schnellsteuerung-Karte
+## v0.4.9 – Überschuss in der Schnellsteuerung
 
 ### Neu
 - **Neue Option `show_surplus` für die Schnellsteuerung-Karte:** blendet
   den aktuellen Überschuss in der Kopfzeile ein (auch im visuellen Editor
   schaltbar).
+
+## v0.4.8 – Schnellsteuerung-Karte
+
+### Neu
 - **Neue kompakte Dashboard-Karte `custom:optimum-watt-control-card`.**
   Zeigt pro Gerät Status, Restzeit bis zur nächsten Schaltung und die
   Buttons Auto / An / Aus, dazu einen Umschalter für die globale
