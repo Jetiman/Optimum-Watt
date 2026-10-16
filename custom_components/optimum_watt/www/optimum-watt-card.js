@@ -1248,7 +1248,8 @@ pushCard({
  * Config: title (string), entry_id (string), show_disabled (bool, default
  * false), show_auto_switch (bool, default true), show_power (bool, default
  * false: shows the device's current consumption next to its name, taken
- * from its first additional sensor that reports W or kW), show_controls (bool,
+ * from its first additional sensor that reports W or kW), show_surplus (bool,
+ * default false: shows the current surplus in the header), show_controls (bool,
  * default true; false = display only: no mode buttons, the automatic badge
  * is not clickable).
  */
@@ -1270,6 +1271,8 @@ class OptimumWattControlCard extends HTMLElement {
           <style>
             .ow-head { display:flex; align-items:center; gap:8px; padding:12px 16px 4px; }
             .ow-title { flex:1; font-size:1.1em; font-weight:500; }
+            .ow-surplus { font-size:0.9em; color:var(--secondary-text-color); white-space:nowrap; }
+            .ow-surplus b { color:var(--primary-text-color); font-weight:600; }
             .ow-auto { border:none; border-radius:14px; padding:4px 12px; cursor:pointer; font-size:0.8em; background:var(--secondary-background-color); color:var(--primary-text-color); }
             .ow-auto.active { background:var(--primary-color); color:var(--text-primary-color, #fff); }
             .ow-list { padding:4px 16px 12px; }
@@ -1288,11 +1291,12 @@ class OptimumWattControlCard extends HTMLElement {
             .ow-modes button.active { background:var(--primary-color); color:var(--text-primary-color, #fff); font-weight:600; }
             .ow-empty { padding:16px; color:var(--secondary-text-color); }
           </style>
-          <div class="ow-head"><div class="ow-title"></div><button class="ow-auto" hidden></button></div>
+          <div class="ow-head"><div class="ow-title"></div><div class="ow-surplus" hidden></div><button class="ow-auto" hidden></button></div>
           <div class="ow-list"></div>
         </ha-card>`;
       this._titleEl = this.querySelector(".ow-title");
       this._autoBtn = this.querySelector(".ow-auto");
+      this._surplusEl = this.querySelector(".ow-surplus");
       this._list = this.querySelector(".ow-list");
       this._autoBtn.addEventListener("click", () => this._toggleAuto());
       this._titleEl.textContent = this._config.title ?? "Optimum Watt";
@@ -1376,6 +1380,10 @@ class OptimumWattControlCard extends HTMLElement {
     this._autoBtn.hidden = !showAuto;
     this._autoBtn.textContent = state.auto_mode ? "Automatik an" : "Automatik aus";
     this._autoBtn.classList.toggle("active", !!state.auto_mode);
+    this._surplusEl.hidden = !this._config.show_surplus;
+    if (this._config.show_surplus) {
+      this._surplusEl.innerHTML = `Überschuss <b>${escapeHtml(fmtPower(state.surplus_w))}</b>`;
+    }
     const controls = this._config.show_controls !== false;
     this._autoBtn.disabled = !controls;
     this._autoBtn.style.cursor = controls ? "pointer" : "default";
@@ -1444,6 +1452,7 @@ defineOnce("optimum-watt-control-card", OptimumWattControlCard);
 class OptimumWattControlCardEditor extends HTMLElement {
   static SCHEMA = [
     { name: "title", selector: { text: {} } },
+    { name: "show_surplus", selector: { boolean: {} } },
     { name: "show_power", selector: { boolean: {} } },
     { name: "show_controls", selector: { boolean: {} } },
     { name: "show_auto_switch", selector: { boolean: {} } },
@@ -1452,6 +1461,7 @@ class OptimumWattControlCardEditor extends HTMLElement {
 
   static LABELS = {
     title: "Titel",
+    show_surplus: "Aktuellen Überschuss in der Kopfzeile anzeigen",
     show_power: "Verbrauch hinter dem Namen anzeigen",
     show_controls: "Bedien-Buttons anzeigen (aus = nur Anzeige)",
     show_auto_switch: "Automatik-Umschalter anzeigen",
@@ -1490,6 +1500,7 @@ class OptimumWattControlCardEditor extends HTMLElement {
     this._form.hass = this._hass;
     this._form.data = {
       title: "Optimum Watt",
+      show_surplus: false,
       show_power: false,
       show_controls: true,
       show_auto_switch: true,
